@@ -8,11 +8,11 @@ use crate::plugins::loading::*;
 use crate::plugins::menu::*;
 use crate::resources::execution::*;
 use crate::resources::game::*;
-use crate::resources::grid::*;
 use crate::resources::level::*;
 use crate::resources::loading::*;
 use crate::resources::player::*;
 use crate::states::game::*;
+use crate::systems::ui::EguiUIPlugin;
 use bevy::prelude::*;
 
 mod components;
@@ -24,12 +24,6 @@ mod results;
 mod states;
 mod structs;
 mod systems;
-
-// Système pour setup la caméra
-fn setup_camera(mut commands: Commands, mut display_config: ResMut<GridDisplayConfig>) {
-    let camera_entity = commands.spawn(Camera2d).id();
-    display_config.camera_entity = Some(camera_entity);
-}
 
 fn main() {
     App::new()
@@ -51,9 +45,10 @@ fn main() {
         .add_event::<PlayerInfoCompleteEvent>()
         // Plugins personnalisés
         .add_plugins((
-            LevelLoadingPlugin,  // Plugin de chargement des niveaux
-            MenuPlugin,          // Plugin de menu et auto-start
-            GridDisplayPlugin,   // Plugin d'affichage de la grille
+            LevelLoadingPlugin, // Plugin de chargement des niveaux
+            MenuPlugin,         // Plugin de menu et auto-start
+            GridDisplayPlugin,  // Plugin d'affichage de la grille
+            EguiUIPlugin,       // Plugin d'édition d'instructions
         ))
         .run();
 }

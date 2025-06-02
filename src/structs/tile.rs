@@ -22,6 +22,7 @@ impl Tile {
 }
 
 #[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Debug)]
 pub enum TileColor {
     #[default]
     Gray,

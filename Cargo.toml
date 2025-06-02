@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.16.0"
+bevy_egui = "0.34.1"
+egui = "0.31.1"
