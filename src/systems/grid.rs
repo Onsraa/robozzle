@@ -40,35 +40,37 @@ pub fn display_grid_system(
         Vec2::new(ROBOT_SIZE / 3.0, -ROBOT_SIZE / 2.0),  // Coin droit
     ));
 
-    // Affiche chaque tuile
-    for tile in &grid.tiles {
-        let world_x = start_x + tile.x as f32 * (TILE_SIZE + TILE_SPACING) + TILE_SIZE / 2.0;
-        let world_y = start_y - tile.y as f32 * (TILE_SIZE + TILE_SPACING) - TILE_SIZE / 2.0;
+    // Affiche chaque tuile (seulement celles qui existent)
+    for (index, tile_opt) in grid.tiles.iter().enumerate() {
+        if let Some(tile) = tile_opt {
+            let world_x = start_x + tile.x as f32 * (TILE_SIZE + TILE_SPACING) + TILE_SIZE / 2.0;
+            let world_y = start_y - tile.y as f32 * (TILE_SIZE + TILE_SPACING) - TILE_SIZE / 2.0;
 
-        // Crée la tuile
-        commands.spawn((
-            Mesh2d(tile_mesh.clone()),
-            MeshMaterial2d(materials.add(tile.color.to_bevy_color())),
-            Transform::from_xyz(world_x, world_y, 0.0),
-            GridTile {
-                grid_x: tile.x,
-                grid_y: tile.y,
-            },
-            GridDisplay,
-        ));
-
-        // Ajoute une étoile si nécessaire
-        if tile.has_star && !tile.star_collected {
+            // Crée la tuile
             commands.spawn((
-                Mesh2d(star_mesh.clone()),
-                MeshMaterial2d(materials.add(COLOR_STAR)),
-                Transform::from_xyz(world_x, world_y, 1.0), // Z=1 pour être au-dessus de la tuile
-                GridStar {
+                Mesh2d(tile_mesh.clone()),
+                MeshMaterial2d(materials.add(tile.color.to_bevy_color())),
+                Transform::from_xyz(world_x, world_y, 0.0),
+                GridTile {
                     grid_x: tile.x,
                     grid_y: tile.y,
                 },
                 GridDisplay,
             ));
+
+            // Ajoute une étoile si nécessaire
+            if tile.has_star && !tile.star_collected {
+                commands.spawn((
+                    Mesh2d(star_mesh.clone()),
+                    MeshMaterial2d(materials.add(COLOR_STAR)),
+                    Transform::from_xyz(world_x, world_y, 1.0), // Z=1 pour être au-dessus de la tuile
+                    GridStar {
+                        grid_x: tile.x,
+                        grid_y: tile.y,
+                    },
+                    GridDisplay,
+                ));
+            }
         }
     }
 

@@ -9,11 +9,11 @@ pub struct LevelData {
     pub name: String,
     pub width: i32,
     pub height: i32,
-    pub tiles: Vec<Tile>,
+    pub tiles: Vec<Option<Tile>>,  // Support des cases vides
     pub robot_start_pos: (i32, i32),
     pub robot_start_dir: Direction,
     pub total_stars: usize,
-    pub function_limits: Vec<usize>, 
+    pub function_limits: Vec<usize>,
 }
 
 impl LevelData {
@@ -27,7 +27,7 @@ impl LevelData {
         let mut robot_pos = (0, 0);
         let mut robot_dir = Direction::North;
         let mut function_limits = vec![5];
-        let mut tiles = Vec::new();
+        let mut tiles: Vec<Option<Tile>> = Vec::new();
 
         let lines: Vec<&str> = content.lines().collect();
         let mut i = 0;
@@ -63,6 +63,7 @@ impl LevelData {
             i += 1;
         }
 
+        // Parse la grille avec support des cases vides
         for y in 0..height {
             if i + y as usize >= lines.len() {
                 break;
@@ -71,20 +72,30 @@ impl LevelData {
             let line = lines[i + y as usize];
             let cells: Vec<&str> = line.split_whitespace().collect();
 
-            for (x, cell) in cells.iter().enumerate() {
-                if x >= width as usize {
-                    break;
+            for x in 0..width {
+                let cell = if x < cells.len() as i32 {
+                    cells[x as usize]
+                } else {
+                    "X" // Case vide par défaut si pas assez de données
+                };
+
+                if cell == "X" {
+                    // Case vide - on ajoute None
+                    tiles.push(None);
+                } else {
+                    // Case normale
+                    let has_star = cell.contains('*');
+                    let color_char = cell.chars().next().unwrap_or('.');
+                    let color = TileColor::from_char(color_char);
+                    tiles.push(Some(Tile::new(x, y, color, has_star)));
                 }
-
-                let has_star = cell.contains('*');
-                let color_char = cell.chars().next().unwrap_or('.');
-                let color = TileColor::from_char(color_char);
-
-                tiles.push(Tile::new(x as i32, y, color, has_star));
             }
         }
 
-        let total_stars = tiles.iter().filter(|t| t.has_star).count();
+        let total_stars = tiles.iter()
+            .filter_map(|tile_opt| tile_opt.as_ref())  // Filtre les cases vides
+            .filter(|tile| tile.has_star)             // Filtre les tuiles avec étoiles
+            .count();
 
         Ok(LevelData {
             id,
@@ -102,7 +113,7 @@ impl LevelData {
 
 #[derive(Clone)]
 pub struct ProblemState {
-    pub functions: Vec<Vec<Instruction>>, 
+    pub functions: Vec<Vec<Instruction>>,
     pub stars_collected: usize,
     pub is_completed: bool,
 }

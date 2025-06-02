@@ -23,21 +23,48 @@ impl LevelManager {
     pub fn load_levels_from_directory(path: &str) -> Result<Self, String> {
         let mut manager = Self::new();
 
-        // Lit tous les fichiers .txt du répertoire
+        // Lit tous les fichiers .txt du répertoire et les trie par numéro
         let paths = fs::read_dir(path)
             .map_err(|e| format!("Erreur lecture répertoire: {}", e))?;
 
-        for (index, path) in paths.enumerate() {
-            let path = path.map_err(|e| format!("Erreur path: {}", e))?;
-            if path.path().extension().and_then(|s| s.to_str()) == Some("txt") {
-                let level_data = LevelData::from_file(&path.path().to_string_lossy(), index)?;
-                let problem_state = ProblemState::new(level_data.function_limits.len());
+        let mut level_files = Vec::new();
 
-                manager.levels.push(level_data);
-                manager.level_states.insert(index, problem_state);
+        for path in paths {
+            let path = path.map_err(|e| format!("Erreur path: {}", e))?;
+            let file_path = path.path();
+
+            if file_path.extension().and_then(|s| s.to_str()) == Some("txt") {
+                if let Some(file_name) = file_path.file_stem().and_then(|s| s.to_str()) {
+                    // Essaie de parser le nom de fichier comme un nombre
+                    if let Ok(level_num) = file_name.parse::<usize>() {
+                        level_files.push((level_num, file_path.to_string_lossy().to_string()));
+                    }
+                }
             }
         }
 
+        // Trie par numéro de niveau
+        level_files.sort_by_key(|(num, _)| *num);
+
+        // Charge chaque niveau dans l'ordre
+        for (index, (level_num, file_path)) in level_files.iter().enumerate() {
+            match LevelData::from_file(file_path, index) {
+                Ok(level_data) => {
+                    let problem_state = ProblemState::new(level_data.function_limits.len());
+
+                    manager.levels.push(level_data);
+                    manager.level_states.insert(index, problem_state);
+
+                    info!("Niveau {} chargé depuis {}", index + 1, file_path);
+                }
+                Err(e) => {
+                    error!("Erreur chargement niveau {}: {}", file_path, e);
+                    return Err(format!("Erreur dans le fichier {}: {}", file_path, e));
+                }
+            }
+        }
+
+        info!("Chargement terminé: {} niveaux", manager.levels.len());
         Ok(manager)
     }
 
@@ -57,6 +84,16 @@ impl LevelManager {
 
     pub fn get_problem_state_mut(&mut self, level_id: usize) -> Option<&mut ProblemState> {
         self.level_states.get_mut(&level_id)
+    }
+
+    // Nouvelle méthode pour accéder à la liste des niveaux
+    pub fn get_levels(&self) -> &Vec<LevelData> {
+        &self.levels
+    }
+
+    // Méthode pour obtenir le nombre de niveaux
+    pub fn get_levels_count(&self) -> usize {
+        self.levels.len()
     }
 
     // Génère le rapport final de scoring

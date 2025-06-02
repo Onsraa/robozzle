@@ -12,7 +12,7 @@ pub struct Robot {
 }
 
 impl Robot {
-    fn new(x: i32, y: i32, direction: Direction) -> Self {
+    pub fn new(x: i32, y: i32, direction: Direction) -> Self {
         Self {
             x,
             y,
@@ -23,23 +23,23 @@ impl Robot {
         }
     }
 
-    fn reset_to_start(&mut self) {
+    pub fn reset_to_start(&mut self) {
         self.x = self.start_x;
         self.y = self.start_y;
         self.direction = self.start_direction;
     }
 
-    fn move_forward(&mut self) {
+    pub fn move_forward(&mut self) {
         let (dx, dy) = self.direction.get_offset();
         self.x += dx;
         self.y += dy;
     }
 
-    fn turn_left(&mut self) {
+    pub fn turn_left(&mut self) {
         self.direction = self.direction.turn_left();
     }
 
-    fn turn_right(&mut self) {
+    pub fn turn_right(&mut self) {
         self.direction = self.direction.turn_right();
     }
 }
