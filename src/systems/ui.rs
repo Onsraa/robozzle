@@ -102,7 +102,9 @@ pub fn ui_system(
             ui.add_space(8.0);
 
             // Titre selon le mode
-            if level_manager.get_current_level_type() == crate::resources::level::LevelType::Tutorial {
+            if level_manager.get_current_level_type()
+                == crate::resources::level::LevelType::Tutorial
+            {
                 ui.heading("🎓 Tutoriel");
             } else {
                 ui.heading("📋 Niveaux");
@@ -110,7 +112,8 @@ pub fn ui_system(
             ui.separator();
 
             // Chronomètre seulement en mode normal
-            if level_manager.get_current_level_type() == crate::resources::level::LevelType::Normal {
+            if level_manager.get_current_level_type() == crate::resources::level::LevelType::Normal
+            {
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     ui.add_space(10.0);
@@ -125,10 +128,15 @@ pub fn ui_system(
                         egui::Color32::from_rgb(80, 200, 80)
                     };
 
-                    ui.label(egui::RichText::new(format!("⏱️ {:02}:{:02}", remaining_mins, remaining_secs))
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "⏱️ {:02}:{:02}",
+                            remaining_mins, remaining_secs
+                        ))
                         .size(18.0)
                         .color(time_color)
-                        .strong());
+                        .strong(),
+                    );
                 });
                 ui.separator();
             }
@@ -177,8 +185,12 @@ pub fn ui_system(
                             };
 
                             // En mode tutoriel, on ne peut pas changer de niveau si pas complété
-                            let can_switch = if level_manager.get_current_level_type() == crate::resources::level::LevelType::Tutorial {
-                                i <= current_level_id || (i == current_level_id + 1 && level_manager.can_proceed_to_next())
+                            let can_switch = if level_manager.get_current_level_type()
+                                == crate::resources::level::LevelType::Tutorial
+                            {
+                                i <= current_level_id
+                                    || (i == current_level_id + 1
+                                        && level_manager.can_proceed_to_next())
                             } else {
                                 true
                             };
@@ -206,17 +218,22 @@ pub fn ui_system(
                 ui.add_space(8.0);
 
                 // Bouton "Suivant" si tous les tutoriels sont complétés
-                if level_manager.get_current_level_type() == crate::resources::level::LevelType::Tutorial
-                    && level_manager.are_all_tutorials_completed() {
+                if level_manager.get_current_level_type()
+                    == crate::resources::level::LevelType::Tutorial
+                    && level_manager.are_all_tutorials_completed()
+                {
                     ui.separator();
                     ui.add_space(8.0);
 
                     ui.vertical_centered(|ui| {
-                        if ui.add_sized(
-                            [150.0, 40.0],
-                            egui::Button::new("➡️ Suivant")
-                                .fill(egui::Color32::from_rgb(80, 200, 80))
-                        ).clicked() {
+                        if ui
+                            .add_sized(
+                                [150.0, 40.0],
+                                egui::Button::new("➡️ Suivant")
+                                    .fill(egui::Color32::from_rgb(80, 200, 80)),
+                            )
+                            .clicked()
+                        {
                             next_state.set(GameState::PlayerInfo);
                         }
                     });
@@ -411,7 +428,11 @@ pub fn ui_system(
                         .clicked()
                     {
                         if execution_engine.is_stopped() {
-                            reset_level_state(&mut robot_query, &mut grid_query, &mut level_manager);
+                            reset_level_state(
+                                &mut robot_query,
+                                &mut grid_query,
+                                &mut level_manager,
+                            );
                             execution_engine.start_execution();
                         } else if execution_engine.is_executing() {
                             execution_engine.pause();
@@ -433,7 +454,11 @@ pub fn ui_system(
                         {
                             execution_engine.stop();
                             execution_engine.clear_error();
-                            reset_level_state(&mut robot_query, &mut grid_query, &mut level_manager);
+                            reset_level_state(
+                                &mut robot_query,
+                                &mut grid_query,
+                                &mut level_manager,
+                            );
                         }
 
                         if ui
@@ -768,6 +793,16 @@ fn instruction_text_button(
     }
 }
 
+// Fonction helper pour extraire l'instruction interne d'une instruction conditionnelle
+fn unwrap_conditional(instruction: &Instruction) -> Instruction {
+    match instruction {
+        Instruction::ConditionalRed(inner) |
+        Instruction::ConditionalGreen(inner) |
+        Instruction::ConditionalBlue(inner) => inner.as_ref().clone(),
+        other => other.clone(),
+    }
+}
+
 // Gestion du clic sur un slot
 fn handle_slot_click(
     edit_state: &mut EguiEditState,
@@ -788,8 +823,13 @@ fn handle_slot_click(
         // Condition seule - wrapper l'instruction existante
         (None, Some(condition)) => {
             if slot_index < function.len() && !matches!(function[slot_index], Instruction::Noop) {
-                let existing = function[slot_index].clone();
-                function[slot_index] = wrap_with_condition(existing, condition);
+                // Extraire l'instruction de base si elle est déjà conditionnelle
+                let base_instruction = unwrap_conditional(&function[slot_index]);
+
+                // Ne rien faire si c'est une instruction vide
+                if !matches!(base_instruction, Instruction::Noop) {
+                    function[slot_index] = wrap_with_condition(base_instruction, condition);
+                }
             }
             edit_state.selected_condition = None;
         }
@@ -812,7 +852,6 @@ fn handle_slot_click(
 }
 
 // Fonctions utilitaires
-
 fn condition_button(
     ui: &mut egui::Ui,
     edit_state: &mut EguiEditState,
@@ -908,7 +947,8 @@ fn reset_level_state(
     if let Ok(mut grid) = grid_query.single_mut() {
         // Reset les étoiles seulement si le niveau n'est pas déjà complété
         if let Some(current_level) = level_manager.get_current_level() {
-            let is_completed = level_manager.get_problem_state(current_level.id)
+            let is_completed = level_manager
+                .get_problem_state(current_level.id)
                 .map(|state| state.is_completed)
                 .unwrap_or(false);
 
@@ -948,19 +988,16 @@ impl Plugin for EguiUIPlugin {
         app.add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
         })
-            .init_resource::<EguiEditState>()
-            .init_resource::<InstructionTextures>()
-            .add_systems(
-                Update,
-                load_instruction_textures.run_if(
-                    in_state(GameState::Editing).or(in_state(GameState::Tutorial))
-                ),
-            )
-            .add_systems(
-                EguiContextPass,
-                ui_system.run_if(
-                    in_state(GameState::Editing).or(in_state(GameState::Tutorial))
-                ),
-            );
+        .init_resource::<EguiEditState>()
+        .init_resource::<InstructionTextures>()
+        .add_systems(
+            EguiContextPass,
+            load_instruction_textures
+                .run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
+        )
+        .add_systems(
+            EguiContextPass,
+            ui_system.run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
+        );
     }
 }

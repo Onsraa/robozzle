@@ -11,7 +11,7 @@ impl Default for LoadingState {
     fn default() -> Self {
         Self {
             error_message: None,
-            levels_path: "levels".to_string(), // Dossier par défaut
+            levels_path: "src/levels".to_string(), 
         }
     }
 }

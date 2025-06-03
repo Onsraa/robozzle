@@ -1,4 +1,3 @@
-use bevy::diagnostic::FrameCount;
 use crate::events::execution::*;
 use crate::events::game::*;
 use crate::events::level::*;
@@ -15,10 +14,12 @@ use crate::resources::level::*;
 use crate::resources::loading::*;
 use crate::resources::player::*;
 use crate::states::game::*;
-use crate::systems::ui::EguiUIPlugin;
 use crate::systems::time_up::TimeUpPlugin;
+use crate::systems::ui::EguiUIPlugin;
+use bevy::diagnostic::FrameCount;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode};
+use crate::resources::ui::UiFocusState;
 
 mod components;
 mod events;
@@ -50,6 +51,7 @@ fn main() {
         .insert_resource(LevelManager::new())
         .insert_resource(LoadingState::default())
         .insert_resource(ExecutionEngine::new(1.0))
+        .insert_resource(UiFocusState::default())
         // Events
         .add_event::<SwitchLevelEvent>()
         .add_event::<StartExecutionEvent>()

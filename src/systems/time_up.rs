@@ -21,7 +21,9 @@ pub fn time_up_ui_system(
         .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
         .resizable(false)
         .collapsible(false)
+        .default_width(500.0)
         .show(ctx, |ui| {
+            ui.set_min_width(450.0);
             ui.vertical_centered(|ui| {
                 if all_completed {
                     ui.heading("🎉 Félicitations!");
@@ -31,7 +33,7 @@ pub fn time_up_ui_system(
                         .color(egui::Color32::from_rgb(80, 200, 80)));
                 } else {
                     ui.heading("⏱️ Temps écoulé");
-                    ui.add_space(20.0);
+                    ui.add_space(30.0);
                     ui.label(egui::RichText::new("Merci pour votre participation!")
                         .size(20.0));
                 }

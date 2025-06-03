@@ -42,7 +42,7 @@ pub fn load_tutorial_levels_on_enter_system(
         loading_state.error_message = Some(error_msg);
 
         // Met à jour le message d'erreur
-        commands.entity(loading_entity).despawn_recursive();
+        commands.entity(loading_entity).despawn();
         commands.spawn((
             Text::new(format!("Erreur: {}\nAppuyez sur Échap pour quitter",
                               loading_state.error_message.as_ref().unwrap())),
@@ -71,7 +71,7 @@ pub fn load_tutorial_levels_on_enter_system(
                 loading_state.error_message = Some(error_msg);
 
                 // Affiche l'erreur
-                commands.entity(loading_entity).despawn_recursive();
+                commands.entity(loading_entity).despawn();
                 commands.spawn((
                     Text::new(format!("Erreur: {}\nAppuyez sur Échap pour quitter",
                                       loading_state.error_message.as_ref().unwrap())),
@@ -91,7 +91,7 @@ pub fn load_tutorial_levels_on_enter_system(
             }
 
             // Supprime l'indicateur de chargement
-            commands.entity(loading_entity).despawn_recursive();
+            commands.entity(loading_entity).despawn();
 
             // Transition vers l'état Tutorial
             next_state.set(GameState::Tutorial);
@@ -102,7 +102,7 @@ pub fn load_tutorial_levels_on_enter_system(
             loading_state.error_message = Some(e);
 
             // Affiche le message d'erreur
-            commands.entity(loading_entity).despawn_recursive();
+            commands.entity(loading_entity).despawn();
             commands.spawn((
                 Text::new(format!("Erreur: {}\nAppuyez sur Échap pour quitter",
                                   loading_state.error_message.as_ref().unwrap())),
@@ -130,7 +130,7 @@ pub fn load_levels_on_enter_system(
     // Reset l'état d'erreur
     loading_state.error_message = None;
 
-    info!("Démarrage du chargement des niveaux depuis: {}", loading_state.levels_path);
+    info!("Demarrage du chargement des niveaux depuis: {}", loading_state.levels_path);
 
     // Affiche temporairement un message de chargement
     let loading_entity = commands.spawn((
@@ -148,14 +148,14 @@ pub fn load_levels_on_enter_system(
 
     // Vérifie que le dossier existe
     if !fs::metadata(&loading_state.levels_path).is_ok() {
-        let error_msg = format!("Dossier '{}' introuvable. Créez le dossier et ajoutez vos fichiers 1.txt, 2.txt, etc.", loading_state.levels_path);
+        let error_msg = format!("Dossier '{}' introuvable. Creez le dossier et ajoutez vos fichiers 1.txt, 2.txt, etc.", loading_state.levels_path);
         error!("{}", error_msg);
         loading_state.error_message = Some(error_msg);
 
         // Met à jour le message d'erreur
-        commands.entity(loading_entity).despawn_recursive();
+        commands.entity(loading_entity).despawn();
         commands.spawn((
-            Text::new(format!("Erreur: {}\nAppuyez sur Échap pour revenir",
+            Text::new(format!("Erreur: {}\nAppuyez sur Echap pour revenir",
                               loading_state.error_message.as_ref().unwrap())),
             Node {
                 position_type: PositionType::Absolute,
@@ -182,7 +182,7 @@ pub fn load_levels_on_enter_system(
                 loading_state.error_message = Some(error_msg);
 
                 // Affiche l'erreur
-                commands.entity(loading_entity).despawn_recursive();
+                commands.entity(loading_entity).despawn();
                 commands.spawn((
                     Text::new(format!("Erreur: {}\nAppuyez sur Échap pour revenir",
                                       loading_state.error_message.as_ref().unwrap())),
@@ -203,20 +203,20 @@ pub fn load_levels_on_enter_system(
             }
 
             // Supprime l'indicateur de chargement
-            commands.entity(loading_entity).despawn_recursive();
+            commands.entity(loading_entity).despawn();
 
             // Transition vers l'état Menu
             next_state.set(GameState::Menu);
-            info!("Transition vers l'état Menu avec {} niveaux", level_manager.get_levels_count());
+            info!("Transition vers l'etat Menu avec {} niveaux", level_manager.get_levels_count());
         }
         Err(e) => {
             error!("Erreur chargement niveaux: {}", e);
             loading_state.error_message = Some(e);
 
             // Affiche le message d'erreur
-            commands.entity(loading_entity).despawn_recursive();
+            commands.entity(loading_entity).despawn();
             commands.spawn((
-                Text::new(format!("Erreur: {}\nAppuyez sur Échap pour revenir",
+                Text::new(format!("Erreur: {}\nAppuyez sur Echap pour revenir",
                                   loading_state.error_message.as_ref().unwrap())),
                 Node {
                     position_type: PositionType::Absolute,
@@ -239,7 +239,6 @@ pub fn handle_loading_error_system(
     mut exit: EventWriter<AppExit>,
 ) {
     if loading_state.error_message.is_some() && keyboard.just_pressed(KeyCode::Escape) {
-        // Quitte l'application en cas d'erreur
         exit.write(AppExit::Success);
     }
 }

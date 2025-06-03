@@ -125,3 +125,20 @@ pub fn auto_start_first_level_system(
         next_state.set(GameState::Loading);
     }
 }
+
+// Ajoutez ce système de nettoyage
+pub fn cleanup_current_level(
+    mut commands: Commands,
+    level_query: Query<Entity, With<CurrentLevel>>,
+    grid_display_query: Query<Entity, With<GridDisplay>>,
+) {
+    // Nettoyer le niveau actuel
+    for entity in level_query.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    // Nettoyer l'affichage de la grille
+    for entity in grid_display_query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
