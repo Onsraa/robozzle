@@ -1,12 +1,18 @@
 LEVEL Circuit en L
-SIZE 8 6
-ROBOT 0 5 NORTH
-FUNCTIONS 10 5
+SIZE 6 12
+ROBOT 4 6 SOUTH
+FUNCTIONS 4 4
 
 GRID:
-X   X   X   .   G*  .   .   X
-X   X   X   .   .   .   .   X
-X   X   X   .   R   .   .   X
-.   .   .   .   .   .   .   X
-.   B*  .   X   X   X   X   X
-.   .   .   X   X   X   X   X
+*   X   X   X   X   X
+.   R   .   .   .   *
+*   .   .   R   .   *
+.   X   X   X   X   X
+.   X   *   .   .   *
+.   X   .   X   X   .
+.   X   .   X   .   .
+.   X   .   X   .   *
+.   X   .   X   X   X
+.   X   .   R   .   *
+.   X   X   X   X   .
+*   .   .   .   .   .

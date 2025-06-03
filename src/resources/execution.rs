@@ -46,7 +46,7 @@ impl ExecutionSpeed {
 }
 
 impl ExecutionEngine {
-    pub fn new(execution_speed: f32) -> Self {
+    pub fn new() -> Self {
         let speed = ExecutionSpeed::Normal;
         Self {
             timer: Timer::from_seconds(speed.get_duration(), TimerMode::Repeating),
