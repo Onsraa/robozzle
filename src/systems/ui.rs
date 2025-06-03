@@ -438,11 +438,11 @@ pub fn ui_system(
 
                         // Bouton Start/Pause
                         let (text, color) = if execution_engine.is_stopped() {
-                            ("▶️ Start", egui::Color32::from_rgb(80, 200, 80))
+                            ("▶ Start", egui::Color32::from_rgb(80, 200, 80))
                         } else if execution_engine.is_paused() {
-                            ("▶️ Resume", egui::Color32::from_rgb(80, 150, 200))
+                            ("▶ Resume", egui::Color32::from_rgb(80, 150, 200))
                         } else {
-                            ("⏸️ Pause", egui::Color32::from_rgb(200, 200, 80))
+                            ("⏸ Pause", egui::Color32::from_rgb(200, 200, 80))
                         };
 
                         if ui
@@ -466,7 +466,7 @@ pub fn ui_system(
                         // Bouton Step
                         let step_enabled =
                             execution_engine.is_paused() || execution_engine.is_stopped();
-                        let step_button = egui::Button::new("⏭️ Step").fill(if step_enabled {
+                        let step_button = egui::Button::new("⏭ Step").fill(if step_enabled {
                             egui::Color32::from_rgb(100, 150, 200)
                         } else {
                             egui::Color32::from_gray(80)
@@ -500,7 +500,7 @@ pub fn ui_system(
                                 if ui
                                     .add_sized(
                                         [button_width / 2.0 - 2.0, 30.0],
-                                        egui::Button::new("🔄 Reset"),
+                                        egui::Button::new("Reset"),
                                     )
                                     .clicked()
                                 {
@@ -518,7 +518,7 @@ pub fn ui_system(
                                 if ui
                                     .add_sized(
                                         [button_width / 2.0 - 2.0, 30.0],
-                                        egui::Button::new("🗑️ Clear"),
+                                        egui::Button::new("Clear"),
                                     )
                                     .clicked()
                                 {
