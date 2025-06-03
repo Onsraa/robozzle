@@ -41,46 +41,82 @@ pub fn execution_system(
         return;
     };
 
-    // Obtient l'instruction actuelle
-    let current_function = execution_engine.get_current_function();
-    let current_instruction_index = execution_engine.get_current_instruction();
+    // Boucle pour skip les instructions conditionnelles non satisfaites
+    loop {
+        let current_function = execution_engine.get_current_function();
+        let current_instruction_index = execution_engine.get_current_instruction();
 
-    if current_function >= problem_state.functions.len() {
-        execution_engine.stop();
-        return;
-    }
-
-    let function = &problem_state.functions[current_function];
-
-    if current_instruction_index >= function.len() {
-        // Fin de fonction - retour ou arrêt
-        if !execution_engine.return_from_function() {
-            // Plus rien à exécuter
+        if current_function >= problem_state.functions.len() {
+            execution_engine.stop();
             return;
         }
-        // Continue avec l'instruction suivante après le retour
-        return;
-    }
 
-    let instruction = function[current_instruction_index].clone();
+        let function = &problem_state.functions[current_function];
 
-    // Exécute l'instruction
-    match execute_instruction(
-        instruction,
-        &mut robot,
-        &mut grid,
-        &mut execution_engine,
-        &level_manager,
-        &mut star_events,
-        level_id
-    ) {
-        Ok(()) => {
-            // L'avancement est géré dans execute_instruction pour CallFunction
+        if current_instruction_index >= function.len() {
+            // Fin de fonction - retour ou arrêt
+            if !execution_engine.return_from_function() {
+                // Plus rien à exécuter
+                return;
+            }
+            // Continue avec l'instruction suivante après le retour
+            continue;
         }
-        Err(error_msg) => {
-            // Erreur d'exécution
-            execution_engine.set_error(error_msg);
-            robot.reset_to_start();
+
+        let instruction = function[current_instruction_index].clone();
+
+        // Vérifie si c'est une condition non satisfaite
+        let should_skip = match &instruction {
+            Instruction::ConditionalRed(_) => {
+                if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
+                    tile.color != TileColor::Red
+                } else {
+                    true
+                }
+            }
+            Instruction::ConditionalGreen(_) => {
+                if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
+                    tile.color != TileColor::Green
+                } else {
+                    true
+                }
+            }
+            Instruction::ConditionalBlue(_) => {
+                if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
+                    tile.color != TileColor::Blue
+                } else {
+                    true
+                }
+            }
+            _ => false,
+        };
+
+        if should_skip {
+            // Skip cette instruction sans délai
+            execution_engine.advance_instruction();
+            continue;
+        }
+
+        // Exécute l'instruction
+        match execute_instruction(
+            instruction,
+            &mut robot,
+            &mut grid,
+            &mut execution_engine,
+            &level_manager,
+            &mut star_events,
+            level_id
+        ) {
+            Ok(()) => {
+                // L'avancement est géré dans execute_instruction pour CallFunction
+                break; // Sort de la boucle après une exécution réussie
+            }
+            Err(error_msg) => {
+                // Erreur d'exécution
+                execution_engine.set_error(error_msg);
+                robot.reset_to_start();
+                break;
+            }
         }
     }
 }

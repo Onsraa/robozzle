@@ -1,0 +1,14 @@
+LEVEL Pile sur le rouge
+SIZE 10 8
+ROBOT 4 3 EAST
+FUNCTIONS 4 4
+
+GRID:
+X  X  G  B  B  B  B  B  B  G
+X  X  B  X  X  X  X  X  X  B
+X  X  B  X  X  X  X  X  X  B
+X  X  B  X  B  B  B  B  B  G
+X  X  B  X  X  X  X  X  X  X
+X  B*  G  R  G  X  X  X  X  X
+X  B  X  B  X  X  X  X  X  X
+X  G  B  G  X  X  X  X  X  X

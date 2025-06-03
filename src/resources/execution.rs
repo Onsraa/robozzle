@@ -10,6 +10,7 @@ pub struct ExecutionEngine {
     is_paused: bool,
     execution_speed: ExecutionSpeed,
     error_message: Option<String>,
+    single_step: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -57,6 +58,7 @@ impl ExecutionEngine {
             is_paused: false,
             execution_speed: speed,
             error_message: None,
+            single_step: false,
         }
     }
 
@@ -127,8 +129,14 @@ impl ExecutionEngine {
 
     pub fn tick(&mut self, delta: std::time::Duration) -> bool {
         if self.is_executing() {
-            self.timer.tick(delta);
-            self.timer.just_finished()
+            if self.single_step {
+                self.single_step = false;
+                self.pause();
+                true
+            } else {
+                self.timer.tick(delta);
+                self.timer.just_finished()
+            }
         } else {
             false
         }
@@ -158,12 +166,20 @@ impl ExecutionEngine {
     pub fn return_from_function(&mut self) -> bool {
         if let Some((prev_function, prev_instruction)) = self.call_stack.pop() {
             self.current_function = prev_function;
-            self.current_instruction = prev_instruction + 1; // Continue après l'appel
+            self.current_instruction = prev_instruction + 1; 
             true
         } else {
-            // Plus de fonctions dans la pile, arrêt de l'exécution
             self.stop();
             false
         }
+    }
+
+    pub fn set_single_step(&mut self, value: bool) {
+        self.single_step = value;
+    }
+    
+    pub fn force_single_step(&mut self) {
+        // Force le timer à se terminer pour exécuter une seule instruction
+        self.timer.tick(std::time::Duration::from_secs_f32(10.0));
     }
 }
