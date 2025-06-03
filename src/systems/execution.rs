@@ -199,17 +199,36 @@ fn execute_instruction(
     }
 }
 
-// Système pour mettre à jour le compteur d'étoiles
+// Système pour mettre à jour le compteur d'étoiles et arrêter si toutes collectées
 pub fn update_star_counter_system(
     mut star_events: EventReader<StarCollectedEvent>,
     mut level_manager: ResMut<LevelManager>,
+    mut execution_engine: ResMut<ExecutionEngine>,
+    grid_query: Query<&Grid, With<CurrentLevel>>,
 ) {
     for event in star_events.read() {
         if let Some(current_level) = level_manager.get_current_level() {
             let level_id = current_level.id;
-            if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
-                problem_state.stars_collected += 1;
-                info!("Étoiles collectées: {}", problem_state.stars_collected);
+            let total_stars = current_level.total_stars;
+
+            // Compter les étoiles actuellement collectées dans la grille
+            if let Ok(grid) = grid_query.single() {
+                let stars_collected = grid.tiles.iter()
+                    .filter_map(|tile_opt| tile_opt.as_ref())
+                    .filter(|tile| tile.has_star && tile.star_collected)
+                    .count();
+
+                if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
+                    problem_state.stars_collected = stars_collected;
+                    info!("Étoiles collectées: {}/{}", stars_collected, total_stars);
+
+                    // Si toutes les étoiles sont collectées, arrêter l'exécution
+                    if stars_collected >= total_stars {
+                        problem_state.is_completed = true;
+                        execution_engine.stop();
+                        info!("Toutes les étoiles collectées! Arrêt de l'exécution.");
+                    }
+                }
             }
         }
     }
@@ -237,7 +256,7 @@ pub fn check_completion_system(
     let level_id = current_level.id;
     let total_stars = current_level.total_stars;
 
-    // Compte les étoiles collectées
+    // Compte les étoiles collectées directement depuis la grille
     let stars_collected = grid.tiles.iter()
         .filter_map(|tile_opt| tile_opt.as_ref())
         .filter(|tile| tile.has_star && tile.star_collected)
@@ -248,8 +267,13 @@ pub fn check_completion_system(
         problem_state.stars_collected = stars_collected;
         problem_state.check_completion(total_stars);
 
-        if problem_state.is_completed {
-            info!("Niveau {} terminé avec succès!", level_manager.get_current_level().unwrap().name);
+        if problem_state.is_completed && !problem_state.completion_time_recorded {
+            // Enregistrer le temps de complétion
+            problem_state.completion_time_recorded = true;
+            problem_state.record_completion_time();
+            info!("Niveau {} terminé avec succès en {:.1}s!", 
+                  level_manager.get_current_level().unwrap().name,
+                  problem_state.get_completion_time_seconds());
         }
     }
 }

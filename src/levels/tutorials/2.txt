@@ -1,0 +1,9 @@
+LEVEL Appel de fonctions
+SIZE 4 3
+ROBOT 0 2 EAST
+FUNCTIONS 3 3
+
+GRID:
+X   X   *   *
+X   *   *   X
+.   *   X   X

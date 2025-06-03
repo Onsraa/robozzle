@@ -7,6 +7,9 @@ use crate::events::robot::*;
 use crate::plugins::grid::*;
 use crate::plugins::loading::*;
 use crate::plugins::menu::*;
+use crate::plugins::player::*;
+use crate::plugins::tutorial::*;
+use crate::plugins::timer::*;
 use crate::resources::execution::*;
 use crate::resources::game::*;
 use crate::resources::level::*;
@@ -14,6 +17,7 @@ use crate::resources::loading::*;
 use crate::resources::player::*;
 use crate::states::game::*;
 use crate::systems::ui::EguiUIPlugin;
+use crate::systems::time_up::TimeUpPlugin;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode};
 
@@ -60,8 +64,12 @@ fn main() {
         .add_plugins((
             LevelLoadingPlugin, // Plugin de chargement des niveaux
             MenuPlugin,         // Plugin de menu et auto-start
+            TutorialPlugin,     // Plugin pour le tutoriel
+            PlayerInfoPlugin,   // Plugin pour la saisie des infos joueur
             GridDisplayPlugin,  // Plugin d'affichage de la grille
             EguiUIPlugin,       // Plugin d'édition d'instructions
+            TimerPlugin,        // Plugin de gestion des timers
+            TimeUpPlugin,       // Plugin pour l'écran de fin
         ))
         .add_systems(Update, make_visible)
         .run();

@@ -39,7 +39,7 @@ impl Plugin for GridDisplayPlugin {
                     check_completion_system,
                 )
                     .chain()
-                    .run_if(in_state(GameState::Editing)),
+                    .run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
             );
     }
 }

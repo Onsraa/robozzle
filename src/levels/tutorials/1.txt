@@ -1,0 +1,7 @@
+LEVEL Instructions basiques
+SIZE 4 1
+ROBOT 0 0 EAST
+FUNCTIONS 4
+
+GRID:
+.   .   .   *

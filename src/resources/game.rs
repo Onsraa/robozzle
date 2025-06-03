@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 #[derive(Resource)]
 pub struct GameTimer {
-    timer: Timer,
-    total_duration: f32,  // en seconde
-    is_finished: bool,
+    pub timer: Timer,
+    pub total_duration: f32,  // en seconde
+    pub is_finished: bool,
 }
 
 impl GameTimer {

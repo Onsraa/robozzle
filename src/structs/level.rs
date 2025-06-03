@@ -116,6 +116,9 @@ pub struct ProblemState {
     pub functions: Vec<Vec<Instruction>>,
     pub stars_collected: usize,
     pub is_completed: bool,
+    pub completion_time: Option<f32>,  // Temps en secondes pour compléter
+    pub start_time: f32,              // Temps de début en secondes
+    pub completion_time_recorded: bool, // Pour éviter d'enregistrer plusieurs fois
 }
 
 impl ProblemState {
@@ -124,15 +127,46 @@ impl ProblemState {
             functions: vec![Vec::new(); num_functions],
             stars_collected: 0,
             is_completed: false,
+            completion_time: None,
+            start_time: 0.0,
+            completion_time_recorded: false,
         }
     }
 
     pub fn reset_stars(&mut self) {
         self.stars_collected = 0;
-        self.is_completed = false;
+        // Ne pas réinitialiser is_completed ni completion_time pour garder l'historique
+        // Mais reset completion_time_recorded pour permettre de réenregistrer le temps si on refait le niveau
+        if !self.is_completed {
+            self.completion_time_recorded = false;
+        }
     }
 
     pub fn check_completion(&mut self, total_stars: usize) {
-        self.is_completed = self.stars_collected == total_stars;
+        if self.stars_collected == total_stars && !self.is_completed {
+            self.is_completed = true;
+        }
+    }
+
+    pub fn start_timer(&mut self, current_time: f32) {
+        self.start_time = current_time;
+        self.completion_time_recorded = false;
+    }
+
+    pub fn record_completion_time(&mut self) {
+        if !self.completion_time_recorded && self.is_completed {
+            // Le temps est calculé dans le système qui appelle cette méthode
+            self.completion_time_recorded = true;
+        }
+    }
+
+    pub fn set_completion_time(&mut self, elapsed: f32) {
+        if self.completion_time.is_none() || elapsed < self.completion_time.unwrap() {
+            self.completion_time = Some(elapsed);
+        }
+    }
+
+    pub fn get_completion_time_seconds(&self) -> f32 {
+        self.completion_time.unwrap_or(0.0)
     }
 }

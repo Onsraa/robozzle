@@ -10,6 +10,10 @@ impl Plugin for MenuPlugin {
             .add_systems(
                 OnEnter(GameState::Menu),
                 auto_start_first_level_system,
+            )
+            .add_systems(
+                OnEnter(GameState::Tutorial),
+                auto_start_first_level_system, 
             );
     }
 }

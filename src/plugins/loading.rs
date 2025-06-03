@@ -10,12 +10,20 @@ impl Plugin for LevelLoadingPlugin {
         app
             .init_resource::<LoadingState>()
             .add_systems(
+                OnEnter(GameState::LoadingTutorial),
+                load_tutorial_levels_on_enter_system,
+            )
+            .add_systems(
                 OnEnter(GameState::Loading),
                 load_levels_on_enter_system,
             )
             .add_systems(
                 Update,
-                handle_loading_error_system.run_if(in_state(GameState::Loading)),
+                (
+                    handle_loading_error_system
+                        .run_if(in_state(GameState::LoadingTutorial)
+                            .or(in_state(GameState::Loading))),
+                ),
             );
     }
 }
