@@ -5,6 +5,7 @@ use crate::resources::execution::*;
 use crate::resources::level::*;
 use crate::structs::controls::*;
 use crate::structs::tile::TileColor;
+use crate::events::level::StarCollectedEvent;
 use bevy::prelude::*;
 
 // Système principal d'exécution des instructions
@@ -13,7 +14,8 @@ pub fn execution_system(
     mut execution_engine: ResMut<ExecutionEngine>,
     mut robot_query: Query<&mut Robot, With<CurrentLevel>>,
     mut grid_query: Query<&mut Grid, With<CurrentLevel>>,
-    level_manager: Res<LevelManager>,
+    mut level_manager: ResMut<LevelManager>,
+    mut star_events: EventWriter<StarCollectedEvent>,
 ) {
     // Vérifie si il est temps d'exécuter la prochaine instruction
     if !execution_engine.tick(time.delta()) {
@@ -32,8 +34,10 @@ pub fn execution_system(
         return;
     };
 
+    let level_id = current_level.id;
+
     // Obtient l'état du problème pour accéder aux fonctions
-    let Some(problem_state) = level_manager.get_problem_state(current_level.id) else {
+    let Some(problem_state) = level_manager.get_problem_state(level_id) else {
         return;
     };
 
@@ -61,10 +65,17 @@ pub fn execution_system(
     let instruction = function[current_instruction_index].clone();
 
     // Exécute l'instruction
-    match execute_instruction(instruction, &mut robot, &mut grid, &mut execution_engine, &level_manager) {
+    match execute_instruction(
+        instruction,
+        &mut robot,
+        &mut grid,
+        &mut execution_engine,
+        &level_manager,
+        &mut star_events,
+        level_id
+    ) {
         Ok(()) => {
-            // Instruction exécutée avec succès
-            execution_engine.advance_instruction();
+            // L'avancement est géré dans execute_instruction pour CallFunction
         }
         Err(error_msg) => {
             // Erreur d'exécution
@@ -75,12 +86,14 @@ pub fn execution_system(
 }
 
 // Fonction qui exécute une instruction spécifique
-fn  execute_instruction(
+fn execute_instruction(
     instruction: Instruction,
     robot: &mut Robot,
     grid: &mut Grid,
     execution_engine: &mut ExecutionEngine,
     level_manager: &LevelManager,
+    star_events: &mut EventWriter<StarCollectedEvent>,
+    level_id: usize,
 ) -> Result<(), String> {
     match instruction {
         Instruction::Forward => {
@@ -102,49 +115,53 @@ fn  execute_instruction(
             if let Some(tile) = grid.get_tile_at_mut(new_x, new_y) {
                 if tile.has_star && !tile.star_collected {
                     tile.star_collected = true;
+                    star_events.send(StarCollectedEvent { x: new_x, y: new_y });
                     info!("Étoile collectée à ({}, {})", new_x, new_y);
                 }
             }
 
+            execution_engine.advance_instruction();
             Ok(())
         }
 
         Instruction::TurnLeft => {
             robot.turn_left();
+            execution_engine.advance_instruction();
             Ok(())
         }
 
         Instruction::TurnRight => {
             robot.turn_right();
+            execution_engine.advance_instruction();
             Ok(())
         }
 
         Instruction::CallFunction(function_id) => {
             // Vérifier que la fonction existe
-            let level_id = level_manager.get_current_level().map(|level| level.id);
-            if let Some(level_id) = level_id {
-                if let Some(problem_state) = level_manager.get_problem_state(level_id) {
-                    if function_id < problem_state.functions.len() {
-                        info!("Appel de fonction {} depuis fonction {} instruction {}", 
-                              function_id, execution_engine.get_current_function(), execution_engine.get_current_instruction());
-                        execution_engine.call_function(function_id);
-                        Ok(())
-                    } else {
-                        Err(format!("Fonction {} n'existe pas", function_id))
-                    }
+            if let Some(problem_state) = level_manager.get_problem_state(level_id) {
+                if function_id < problem_state.functions.len() {
+                    info!("Appel de fonction {} depuis fonction {} instruction {}", 
+                          function_id, execution_engine.get_current_function(), execution_engine.get_current_instruction());
+                    execution_engine.call_function(function_id);
+                    // Ne pas avancer l'instruction ici, l'exécution continue dans la nouvelle fonction
+                    Ok(())
                 } else {
-                    Err("Aucun état de problème trouvé".to_string())
+                    Err(format!("Fonction {} n'existe pas", function_id))
                 }
             } else {
-                Err("Aucun niveau actuel trouvé".to_string())
+                Err("Aucun état de problème trouvé".to_string())
             }
         }
 
         Instruction::ConditionalRed(inner_instruction) => {
             if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
                 if tile.color == TileColor::Red {
-                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager)?;
+                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager, star_events, level_id)?;
+                } else {
+                    execution_engine.advance_instruction();
                 }
+            } else {
+                execution_engine.advance_instruction();
             }
             Ok(())
         }
@@ -152,8 +169,12 @@ fn  execute_instruction(
         Instruction::ConditionalGreen(inner_instruction) => {
             if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
                 if tile.color == TileColor::Green {
-                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager)?;
+                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager, star_events, level_id)?;
+                } else {
+                    execution_engine.advance_instruction();
                 }
+            } else {
+                execution_engine.advance_instruction();
             }
             Ok(())
         }
@@ -161,15 +182,35 @@ fn  execute_instruction(
         Instruction::ConditionalBlue(inner_instruction) => {
             if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
                 if tile.color == TileColor::Blue {
-                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager)?;
+                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager, star_events, level_id)?;
+                } else {
+                    execution_engine.advance_instruction();
                 }
+            } else {
+                execution_engine.advance_instruction();
             }
             Ok(())
         }
 
         Instruction::Noop => {
-            // Ne fait rien
+            execution_engine.advance_instruction();
             Ok(())
+        }
+    }
+}
+
+// Système pour mettre à jour le compteur d'étoiles
+pub fn update_star_counter_system(
+    mut star_events: EventReader<StarCollectedEvent>,
+    mut level_manager: ResMut<LevelManager>,
+) {
+    for event in star_events.read() {
+        if let Some(current_level) = level_manager.get_current_level() {
+            let level_id = current_level.id;
+            if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
+                problem_state.stars_collected += 1;
+                info!("Étoiles collectées: {}", problem_state.stars_collected);
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ use crate::components::robot::*;
 use crate::globals::*;
 use crate::resources::grid::*;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 
 // Système principal pour afficher la grille
 pub fn display_grid_system(
@@ -12,7 +13,8 @@ pub fn display_grid_system(
     mut materials: ResMut<Assets<ColorMaterial>>,
     grid_query: Query<(&Grid, &Robot), With<CurrentLevel>>,
     existing_display: Query<Entity, With<GridDisplay>>,
-    display_config: Res<GridDisplayConfig>,
+    mut display_config: ResMut<GridDisplayConfig>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     // Nettoie l'affichage existant
     for entity in existing_display.iter() {
@@ -24,9 +26,27 @@ pub fn display_grid_system(
         return;
     };
 
+    // Obtenir la taille de la fenêtre
+    let Ok(window) = window_query.single() else {
+        return;
+    };
+
     // Calcule la position de départ pour centrer la grille
     let grid_pixel_width = grid.width as f32 * (TILE_SIZE + TILE_SPACING) - TILE_SPACING;
     let grid_pixel_height = grid.height as f32 * (TILE_SIZE + TILE_SPACING) - TILE_SPACING;
+
+    // Ajuster le centre de la grille en tenant compte du panel de gauche et de l'UI en bas
+    let available_width = window.width() - display_config.left_panel_width;
+    let ui_height = 250.0; // Hauteur réduite de l'UI
+    let available_height = window.height() - ui_height;
+
+    // Centrer dans l'espace disponible
+    let center_x = display_config.left_panel_width + available_width / 2.0;
+    let center_y = available_height / 2.0;
+
+    // Convertir en coordonnées Bevy (centrées)
+    display_config.grid_center.x = center_x - window.width() / 2.0;
+    display_config.grid_center.y = (window.height() / 2.0) - center_y;
 
     let start_x = display_config.grid_center.x - grid_pixel_width / 2.0;
     let start_y = display_config.grid_center.y + grid_pixel_height / 2.0;

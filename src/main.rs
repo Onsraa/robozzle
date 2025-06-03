@@ -1,3 +1,4 @@
+use bevy::diagnostic::FrameCount;
 use crate::events::execution::*;
 use crate::events::game::*;
 use crate::events::level::*;
@@ -14,6 +15,7 @@ use crate::resources::player::*;
 use crate::states::game::*;
 use crate::systems::ui::EguiUIPlugin;
 use bevy::prelude::*;
+use bevy::window::{PresentMode, WindowMode};
 
 mod components;
 mod events;
@@ -27,7 +29,18 @@ mod systems;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Test technique".into(),
+                present_mode: PresentMode::AutoVsync,
+                fit_canvas_to_parent: true,
+                prevent_default_event_handling: false,
+                visible: false,
+                mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+                ..default()
+            }),
+            ..default()
+        }),))
         .init_state::<GameState>()
         .insert_resource(PlayerInfo::default())
         .insert_resource(GameTimer::new(20.0))
@@ -50,5 +63,12 @@ fn main() {
             GridDisplayPlugin,  // Plugin d'affichage de la grille
             EguiUIPlugin,       // Plugin d'édition d'instructions
         ))
+        .add_systems(Update, make_visible)
         .run();
+}
+
+fn make_visible(mut window: Single<&mut Window>, frames: Res<FrameCount>) {
+    if frames.0 == 3 {
+        window.visible = true;
+    }
 }

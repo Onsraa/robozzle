@@ -1,12 +1,15 @@
-// systems/ui_egui.rs
-use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiContextPass};
-use crate::components::ui::*;
-use crate::resources::level::*;
-use crate::resources::execution::*;
-use crate::structs::controls::*;
-use crate::structs::tile::TileColor;
+use crate::components::grid::Grid;
+use crate::components::level::CurrentLevel;
+use crate::components::robot::Robot;
+use crate::events::level::SwitchLevelEvent;
+use crate::resources::execution::ExecutionEngine;
+use crate::resources::grid::GridDisplayConfig;
+use crate::resources::level::LevelManager;
 use crate::states::game::GameState;
+use crate::structs::controls::Instruction;
+use crate::structs::tile::TileColor;
+use bevy::prelude::*;
+use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
 
 // Resource pour l'état d'édition avec egui
 #[derive(Resource, Default)]
@@ -15,413 +18,808 @@ pub struct EguiEditState {
     pub selected_condition: Option<TileColor>,
 }
 
+// Resource pour stocker les textures des instructions
+#[derive(Resource, Default)]
+pub struct InstructionTextures {
+    pub forward: Option<egui::TextureHandle>,
+    pub turn_left: Option<egui::TextureHandle>,
+    pub turn_right: Option<egui::TextureHandle>,
+}
+
+// Système pour charger les textures au démarrage
+pub fn load_instruction_textures(
+    mut contexts: EguiContexts,
+    mut textures: ResMut<InstructionTextures>,
+    asset_server: Res<AssetServer>,
+) {
+    let ctx = contexts.ctx_mut();
+
+    // Charge les images seulement si pas déjà chargées
+    if textures.forward.is_none() {
+        // Charger l'image straight.png
+        if let Ok(image_data) = std::fs::read("assets/images/straight.png") {
+            if let Ok(image) = image::load_from_memory(&image_data) {
+                let size = [image.width() as _, image.height() as _];
+                let rgba = image.to_rgba8();
+                let pixels = rgba.as_flat_samples();
+                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+                textures.forward =
+                    Some(ctx.load_texture("forward", color_image, Default::default()));
+            }
+        }
+    }
+
+    if textures.turn_left.is_none() {
+        // Charger l'image left.png
+        if let Ok(image_data) = std::fs::read("assets/images/left.png") {
+            if let Ok(image) = image::load_from_memory(&image_data) {
+                let size = [image.width() as _, image.height() as _];
+                let rgba = image.to_rgba8();
+                let pixels = rgba.as_flat_samples();
+                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+                textures.turn_left =
+                    Some(ctx.load_texture("turn_left", color_image, Default::default()));
+            }
+        }
+    }
+
+    if textures.turn_right.is_none() {
+        // Charger l'image right.png
+        if let Ok(image_data) = std::fs::read("assets/images/right.png") {
+            if let Ok(image) = image::load_from_memory(&image_data) {
+                let size = [image.width() as _, image.height() as _];
+                let rgba = image.to_rgba8();
+                let pixels = rgba.as_flat_samples();
+                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+                textures.turn_right =
+                    Some(ctx.load_texture("turn_right", color_image, Default::default()));
+            }
+        }
+    }
+}
+
 // Système principal d'interface egui
 pub fn ui_system(
     mut contexts: EguiContexts,
     mut edit_state: ResMut<EguiEditState>,
     mut level_manager: ResMut<LevelManager>,
     mut execution_engine: ResMut<ExecutionEngine>,
-    mut robot_query: Query<&mut crate::components::robot::Robot, With<crate::components::level::CurrentLevel>>,
-    mut grid_query: Query<&mut crate::components::grid::Grid, With<crate::components::level::CurrentLevel>>,
+    mut robot_query: Query<&mut Robot, With<CurrentLevel>>,
+    mut grid_query: Query<&mut Grid, With<CurrentLevel>>,
+    textures: Res<InstructionTextures>,
+    mut level_switch_events: EventWriter<SwitchLevelEvent>,
+    mut display_config: ResMut<GridDisplayConfig>,
 ) {
     let ctx = contexts.ctx_mut();
 
-    // Panel principal
-    egui::Window::new("Robozzle Interface")
-        .resizable(true)
-        .default_size([800.0, 600.0])
+    // Panel de gauche pour la sélection des niveaux
+    let panel_width = 200.0;
+    egui::SidePanel::left("level_selector")
+        .default_width(panel_width)
         .show(ctx, |ui| {
+            ui.add_space(8.0);
+            ui.heading("📋 Niveaux");
+            ui.separator();
+            ui.add_space(8.0);
 
-            // Boutons de contrôle
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                let current_level_id = level_manager
+                    .get_current_level()
+                    .map(|level| level.id)
+                    .unwrap_or(0);
+
+                let levels_count = level_manager.get_levels_count();
+
+                for i in 0..levels_count {
+                    if let Some(level) = level_manager.get_levels().get(i) {
+                        let is_current = i == current_level_id;
+                        let is_completed = level_manager
+                            .get_problem_state(i)
+                            .map(|state| state.is_completed)
+                            .unwrap_or(false);
+
+                        ui.horizontal(|ui| {
+                            ui.add_space(5.0);
+
+                            // Indicateur de niveau actuel centré
+                            ui.allocate_ui_with_layout(
+                                egui::Vec2::new(15.0, 25.0),
+                                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+                                |ui| {
+                                    if is_current {
+                                        ui.label("▶");
+                                    }
+                                },
+                            );
+
+                            // Bouton du niveau
+                            let button_text = format!("{}", level.name);
+                            let button = egui::Button::new(button_text);
+
+                            let button = if is_current {
+                                button.fill(egui::Color32::from_rgb(100, 150, 200))
+                            } else if is_completed {
+                                button.fill(egui::Color32::from_rgb(80, 180, 80))
+                            } else {
+                                button.fill(egui::Color32::from_gray(100))
+                            };
+
+                            if ui.add_sized([110.0, 25.0], button).clicked() {
+                                if i != current_level_id {
+                                    level_switch_events.send(SwitchLevelEvent(i));
+                                    execution_engine.stop();
+                                }
+                            }
+
+                            // Étoiles collectées
+                            if let Some(state) = level_manager.get_problem_state(i) {
+                                ui.label(format!(
+                                    "⭐{}/{}",
+                                    state.stars_collected, level.total_stars
+                                ));
+                            }
+                        });
+
+                        ui.add_space(5.0);
+                    }
+                }
+
+                ui.add_space(8.0);
+            });
+        });
+
+    // Mettre à jour la configuration d'affichage avec la largeur du panel
+    display_config.left_panel_width = panel_width;
+
+    // Calcul de la taille de la fenêtre principale (réduite)
+    let window_width = (ctx.screen_rect().width() * 0.35).min(700.0); // Réduit de 40% à 35%
+    let num_functions = level_manager
+        .get_current_level()
+        .map(|level| level.function_limits.len())
+        .unwrap_or(1);
+    let function_height = 50.0 * num_functions as f32 + 30.0; // Réduit l'espace pour les fonctions
+    let window_height = 180.0 + function_height; // Hauteur totale réduite
+
+    // Position centrée en bas et collée au bord
+    let x_pos = (ctx.screen_rect().width() - window_width) / 2.0;
+    let y_pos = ctx.screen_rect().height() - window_height;
+
+    // Fenêtre principale fixe
+    egui::Window::new("Robozzle")
+        .title_bar(false)
+        .resizable(false)
+        .collapsible(false)
+        .fixed_pos([x_pos, y_pos])
+        .fixed_size([window_width, window_height])
+        .show(ctx, |ui| {
+            ui.add_space(10.0);
+
             ui.horizontal(|ui| {
-                control_buttons_ui(ui, &mut execution_engine, &mut robot_query, &mut grid_query, &mut level_manager);
+                ui.add_space(10.0);
+
+                // Partie gauche - Instructions et Fonctions
+                ui.vertical(|ui| {
+                    let available_width = window_width - 240.0;
+                    ui.set_min_width(available_width);
+                    ui.set_max_width(available_width);
+
+                    // Section Instructions (en haut)
+                    ui.group(|ui| {
+                        ui.set_min_height(85.0); // Hauteur réduite
+                        ui.add_space(8.0);
+
+                        ui.vertical(|ui| {
+                            // Première ligne : instructions de mouvement
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+
+                                // Boutons avec images (taille réduite)
+                                instruction_image_button(
+                                    ui,
+                                    &mut edit_state,
+                                    &textures.forward,
+                                    "Avancer",
+                                    Instruction::Forward,
+                                );
+                                ui.add_space(3.0);
+                                instruction_image_button(
+                                    ui,
+                                    &mut edit_state,
+                                    &textures.turn_left,
+                                    "Tourner à gauche",
+                                    Instruction::TurnLeft,
+                                );
+                                ui.add_space(3.0);
+                                instruction_image_button(
+                                    ui,
+                                    &mut edit_state,
+                                    &textures.turn_right,
+                                    "Tourner à droite",
+                                    Instruction::TurnRight,
+                                );
+
+                                ui.add_space(15.0);
+
+                                // Boutons de fonction
+                                if let Some(level) = level_manager.get_current_level() {
+                                    for i in 0..level.function_limits.len().min(4) {
+                                        let label = format!("F{}", i + 1);
+                                        instruction_text_button(
+                                            ui,
+                                            &mut edit_state,
+                                            &label,
+                                            &format!("Appeler F{}", i + 1),
+                                            Instruction::CallFunction(i),
+                                            18.0, // Taille de police légèrement réduite
+                                        );
+                                        ui.add_space(3.0);
+                                    }
+                                }
+                            });
+
+                            ui.add_space(8.0);
+
+                            // Deuxième ligne : conditions de couleur
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                condition_button(
+                                    ui,
+                                    &mut edit_state,
+                                    "",
+                                    TileColor::Green,
+                                    egui::Color32::from_rgb(80, 200, 80),
+                                    40.0,
+                                ); // Taille réduite
+                                ui.add_space(3.0);
+                                condition_button(
+                                    ui,
+                                    &mut edit_state,
+                                    "",
+                                    TileColor::Red,
+                                    egui::Color32::from_rgb(200, 80, 80),
+                                    40.0,
+                                );
+                                ui.add_space(3.0);
+                                condition_button(
+                                    ui,
+                                    &mut edit_state,
+                                    "",
+                                    TileColor::Blue,
+                                    egui::Color32::from_rgb(80, 80, 200),
+                                    40.0,
+                                );
+                            });
+                        });
+
+                        ui.add_space(8.0);
+                    });
+
+                    ui.add_space(10.0);
+
+                    // Section Fonctions (en bas)
+                    ui.group(|ui| {
+                        ui.add_space(8.0);
+                        function_editor_ui(
+                            ui,
+                            &mut edit_state,
+                            &mut level_manager,
+                            &textures,
+                            &execution_engine,
+                        );
+                        ui.add_space(8.0);
+                    });
+                });
+
+                ui.add_space(10.0);
+                ui.separator();
+                ui.add_space(10.0);
+
+                // Partie droite - Contrôles d'exécution
+                ui.vertical(|ui| {
+                    ui.set_min_width(200.0);
+                    ui.set_max_width(200.0);
+
+                    // Informations du niveau
+                    if let Some(level) = level_manager.get_current_level() {
+                        ui.group(|ui| {
+                            ui.add_space(3.0);
+                            ui.label(egui::RichText::new(&level.name).strong().size(14.0));
+                            if let Some(state) = level_manager.get_problem_state(level.id) {
+                                ui.label(format!(
+                                    "⭐ {}/{}",
+                                    state.stars_collected, level.total_stars
+                                ));
+                            }
+                            ui.add_space(3.0);
+                        });
+                    }
+
+                    ui.add_space(10.0);
+
+                    // Bouton Start/Pause
+                    let (text, color) = if execution_engine.is_stopped() {
+                        ("Start", egui::Color32::from_rgb(80, 200, 80))
+                    } else if execution_engine.is_paused() {
+                        ("Resume", egui::Color32::from_rgb(80, 150, 200))
+                    } else {
+                        ("Pause", egui::Color32::from_rgb(200, 200, 80))
+                    };
+
+                    if ui
+                        .add_sized(
+                            [180.0, 40.0], // Taille réduite
+                            egui::Button::new(text).fill(color),
+                        )
+                        .clicked()
+                    {
+                        if execution_engine.is_stopped() {
+                            reset_level_state(&mut robot_query, &mut grid_query);
+                            execution_engine.start_execution();
+                        } else if execution_engine.is_executing() {
+                            execution_engine.pause();
+                        } else {
+                            execution_engine.resume();
+                        }
+                    }
+
+                    ui.add_space(8.0);
+
+                    // Boutons Reset et Clear
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_sized(
+                                [85.0, 35.0], // Taille réduite
+                                egui::Button::new("Reset"),
+                            )
+                            .clicked()
+                        {
+                            execution_engine.stop();
+                            execution_engine.clear_error();
+                            reset_level_state(&mut robot_query, &mut grid_query);
+                        }
+
+                        if ui
+                            .add_sized([85.0, 35.0], egui::Button::new("Clear"))
+                            .clicked()
+                        {
+                            clear_all_instructions(&mut level_manager);
+                            execution_engine.stop();
+                        }
+                    });
+
+                    ui.add_space(8.0);
+
+                    // Bouton de vitesse
+                    let speed_text = match execution_engine.get_speed() {
+                        crate::resources::execution::ExecutionSpeed::Normal => "Normal (x1)",
+                        crate::resources::execution::ExecutionSpeed::Fast => "Fast (x2)",
+                        crate::resources::execution::ExecutionSpeed::VeryFast => "Very Fast (x5)",
+                    };
+
+                    if ui
+                        .add_sized(
+                            [180.0, 30.0], // Taille réduite
+                            egui::Button::new(speed_text),
+                        )
+                        .clicked()
+                    {
+                        execution_engine.change_speed();
+                    }
+
+                    // Message d'erreur
+                    if let Some(error) = execution_engine.get_error() {
+                        ui.add_space(8.0);
+                        ui.colored_label(egui::Color32::RED, error);
+                    }
+                });
+
+                ui.add_space(10.0);
             });
 
-            ui.separator();
-
-            // Récupérer les données du niveau une seule fois
-            let level_data = level_manager.get_current_level().map(|level| (level.id, level.function_limits.len()));
-
-            if let Some((level_id, function_count)) = level_data {
-                // Palette d'instructions
-                instruction_palette_ui(ui, &mut edit_state, function_count);
-
-                ui.separator();
-
-                // Éditeur de fonctions
-                function_editor_ui(ui, &mut edit_state, &mut level_manager, level_id as u32);
-            }
-
-            ui.separator();
-
-            // État de sélection
-            selection_state_ui(ui, &edit_state);
-
-            // Messages d'erreur
-            if let Some(error) = execution_engine.get_error() {
-                ui.colored_label(egui::Color32::RED, format!("Erreur: {}", error));
-            }
+            ui.add_space(10.0);
         });
 }
 
-// Interface des boutons de contrôle
-fn control_buttons_ui(
-    ui: &mut egui::Ui,
-    execution_engine: &mut ExecutionEngine,
-    robot_query: &mut Query<&mut crate::components::robot::Robot, With<crate::components::level::CurrentLevel>>,
-    grid_query: &mut Query<&mut crate::components::grid::Grid, With<crate::components::level::CurrentLevel>>,
-    level_manager: &mut LevelManager,
-) {
-    // Bouton Lancer/Pause
-    let button_text = if execution_engine.is_stopped() {
-        "🚀 Lancer"
-    } else if execution_engine.is_paused() {
-        "▶️ Reprendre"
-    } else {
-        "⏸️ Pause"
-    };
-
-    let button_color = if execution_engine.is_executing() {
-        egui::Color32::from_rgb(200, 200, 50) // Jaune
-    } else {
-        egui::Color32::from_rgb(50, 200, 50) // Vert
-    };
-
-    if ui.add(egui::Button::new(button_text).fill(button_color)).clicked() {
-        if execution_engine.is_stopped() {
-            // Reset robot avant lancement
-            if let Ok(mut robot) = robot_query.single_mut() {
-                robot.reset_to_start();
-            }
-            // Reset étoiles
-            if let Ok(mut grid) = grid_query.single_mut() {
-                for tile_opt in &mut grid.tiles {
-                    if let Some(tile) = tile_opt {
-                        tile.star_collected = false;
-                    }
-                }
-            }
-            execution_engine.start_execution();
-        } else if execution_engine.is_executing() {
-            execution_engine.pause();
-        } else if execution_engine.is_paused() {
-            execution_engine.resume();
-        }
-    }
-
-    // Bouton vitesse
-    let speed_text = format!("⚡ x{:?}", execution_engine.get_speed());
-    if ui.add(egui::Button::new(speed_text).fill(egui::Color32::from_rgb(200, 200, 50))).clicked() {
-        execution_engine.change_speed();
-    }
-
-    // Bouton Reset
-    if ui.add(egui::Button::new("🔄 Reset").fill(egui::Color32::from_rgb(200, 150, 50))).clicked() {
-        execution_engine.stop();
-        execution_engine.clear_error();
-        if let Ok(mut robot) = robot_query.single_mut() {
-            robot.reset_to_start();
-        }
-        if let Ok(mut grid) = grid_query.single_mut() {
-            for tile_opt in &mut grid.tiles {
-                if let Some(tile) = tile_opt {
-                    tile.star_collected = false;
-                }
-            }
-        }
-    }
-
-    // Bouton Clear
-    if ui.add(egui::Button::new("🗑️ Clear").fill(egui::Color32::from_rgb(200, 50, 50))).clicked() {
-        execution_engine.stop();
-        // Vider toutes les fonctions
-        if let Some(level) = level_manager.get_current_level() {
-            let level_id = level.id;
-            if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
-                for function in &mut problem_state.functions {
-                    function.clear();
-                }
-            }
-        }
-    }
-}
-
-// Interface de la palette d'instructions
-fn instruction_palette_ui(
-    ui: &mut egui::Ui,
-    edit_state: &mut EguiEditState,
-    function_count: usize,
-) {
-    ui.label("📋 Instructions:");
-
-    ui.horizontal(|ui| {
-        // Instructions de base
-        let basic_instructions = vec![
-            ("→", Instruction::Forward),
-            ("⤺", Instruction::TurnLeft),
-            ("⤻", Instruction::TurnRight),
-        ];
-
-        for (label, instruction) in basic_instructions {
-            let selected = matches!(&edit_state.selected_instruction, Some(inst) if std::mem::discriminant(inst) == std::mem::discriminant(&instruction));
-            let color = if selected {
-                egui::Color32::from_rgb(100, 150, 255)
-            } else {
-                egui::Color32::from_rgb(100, 100, 150)
-            };
-
-            if ui.add(egui::Button::new(label).fill(color)).clicked() {
-                edit_state.selected_instruction = Some(instruction);
-                edit_state.selected_condition = None;
-            }
-        }
-
-        ui.separator();
-
-        // Fonctions dynamiques selon le niveau
-        for i in 0..function_count {
-            let instruction = Instruction::CallFunction(i);
-            let label = format!("F{}", i + 1);
-            let selected = matches!(&edit_state.selected_instruction, Some(inst) if matches!(inst, Instruction::CallFunction(id) if *id == i));
-            let color = if selected {
-                egui::Color32::from_rgb(100, 150, 255)
-            } else {
-                egui::Color32::from_rgb(100, 100, 150)
-            };
-
-            if ui.add(egui::Button::new(label).fill(color)).clicked() {
-                edit_state.selected_instruction = Some(instruction);
-                edit_state.selected_condition = None;
-            }
-        }
-
-        ui.separator();
-
-        // Boutons de couleur
-        ui.label("🎨");
-
-        let color_conditions = vec![
-            (TileColor::Red, egui::Color32::from_rgb(230, 100, 100)),
-            (TileColor::Green, egui::Color32::from_rgb(100, 230, 100)),
-            (TileColor::Blue, egui::Color32::from_rgb(100, 100, 230)),
-        ];
-
-        for (tile_color, color) in color_conditions {
-            let selected = matches!(&edit_state.selected_condition, Some(cond) if *cond == tile_color);
-            let final_color = if selected {
-                egui::Color32::WHITE
-            } else {
-                color
-            };
-
-            if ui.add(egui::Button::new("  ").fill(final_color).min_size(egui::Vec2::new(30.0, 25.0))).clicked() {
-                edit_state.selected_condition = Some(tile_color);
-                edit_state.selected_instruction = None;
-            }
-        }
-
-        // Bouton clear sélection
-        if ui.add(egui::Button::new("❌").fill(egui::Color32::GRAY)).clicked() {
-            edit_state.selected_instruction = None;
-            edit_state.selected_condition = None;
-        }
-    });
-}
-
-// Interface de l'éditeur de fonctions
+// Éditeur de fonctions avec indicateur d'exécution
 fn function_editor_ui(
     ui: &mut egui::Ui,
     edit_state: &mut EguiEditState,
     level_manager: &mut LevelManager,
-    level_id: u32,
+    textures: &InstructionTextures,
+    execution_engine: &ExecutionEngine,
 ) {
-    ui.label("🔧 Fonctions:");
+    let level_data = level_manager
+        .get_current_level()
+        .map(|level| (level.id, level.function_limits.clone()))
+        .unwrap_or((0, vec![]));
 
-    // Récupérer le problem_state une seule fois
-    if let Some(problem_state) = level_manager.get_problem_state_mut(level_id as usize) {
+    let (level_id, function_limits) = level_data;
+
+    // Obtenir la position actuelle d'exécution
+    let current_function = if execution_engine.is_executing() || execution_engine.is_paused() {
+        Some(execution_engine.get_current_function())
+    } else {
+        None
+    };
+    let current_instruction = if execution_engine.is_executing() || execution_engine.is_paused() {
+        Some(execution_engine.get_current_instruction())
+    } else {
+        None
+    };
+
+    if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
         for (func_id, function) in problem_state.functions.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.label(format!("F{}:", func_id + 1));
+            let limit = function_limits.get(func_id).copied().unwrap_or(10);
 
-                // Créer une grille de slots pour cette fonction
-                let max_slots = 8; // Ou selon le niveau
-                for slot_index in 0..max_slots {
-                    // Cloner l'instruction pour éviter le conflit de borrow
-                    let current_instruction = if slot_index < function.len() {
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+
+                // Label de la fonction
+                ui.label(
+                    egui::RichText::new(format!("F{}", func_id + 1))
+                        .size(18.0)
+                        .strong(),
+                );
+                ui.add_space(10.0);
+
+                // Slots d'instructions
+                for slot_index in 0..limit {
+                    let current_instruction_in_slot = if slot_index < function.len() {
                         function[slot_index].clone()
                     } else {
                         Instruction::Noop
                     };
 
-                    instruction_slot_ui(ui, edit_state, function, func_id, slot_index, &current_instruction);
+                    // Vérifier si c'est l'instruction en cours d'exécution
+                    let is_executing = current_function == Some(func_id)
+                        && current_instruction == Some(slot_index);
+
+                    instruction_slot_ui(
+                        ui,
+                        edit_state,
+                        function,
+                        slot_index,
+                        &current_instruction_in_slot,
+                        textures,
+                        is_executing,
+                    );
+
+                    ui.add_space(2.0);
                 }
             });
+
+            ui.add_space(8.0);
         }
     }
 }
 
-// Interface d'un slot d'instruction individuel
+// Helper pour déterminer quelle texture utiliser selon l'instruction
+fn get_texture_for_instruction<'a>(
+    instruction: &Instruction,
+    textures: &'a InstructionTextures,
+) -> &'a Option<egui::TextureHandle> {
+    match instruction {
+        Instruction::Forward => &textures.forward,
+        Instruction::TurnLeft => &textures.turn_left,
+        Instruction::TurnRight => &textures.turn_right,
+        Instruction::ConditionalRed(inner)
+        | Instruction::ConditionalGreen(inner)
+        | Instruction::ConditionalBlue(inner) => {
+            // Récursion pour obtenir la texture de l'instruction interne
+            match inner.as_ref() {
+                Instruction::Forward => &textures.forward,
+                Instruction::TurnLeft => &textures.turn_left,
+                Instruction::TurnRight => &textures.turn_right,
+                _ => &None,
+            }
+        }
+        _ => &None,
+    }
+}
+
+// UI pour un slot d'instruction avec indicateur d'exécution
 fn instruction_slot_ui(
     ui: &mut egui::Ui,
     edit_state: &mut EguiEditState,
     function: &mut Vec<Instruction>,
-    func_id: usize,
     slot_index: usize,
     current_instruction: &Instruction,
+    textures: &InstructionTextures,
+    is_executing: bool,
 ) {
-    // Déterminer couleur et texte
-    let (text, bg_color) = match current_instruction {
-        Instruction::Noop => ("".to_string(), egui::Color32::from_rgb(150, 150, 150)),
-        Instruction::Forward => ("→".to_string(), egui::Color32::from_rgb(150, 150, 150)),
-        Instruction::TurnLeft => ("⤺".to_string(), egui::Color32::from_rgb(150, 150, 150)),
-        Instruction::TurnRight => ("⤻".to_string(), egui::Color32::from_rgb(150, 150, 150)),
-        Instruction::CallFunction(id) => (format!("F{}", id + 1), egui::Color32::from_rgb(150, 150, 150)),
-        Instruction::ConditionalRed(inner) => {
-            let inner_text = instruction_to_short_string(inner);
-            (format!("R:{}", inner_text), egui::Color32::from_rgb(230, 120, 120))
-        },
-        Instruction::ConditionalGreen(inner) => {
-            let inner_text = instruction_to_short_string(inner);
-            (format!("G:{}", inner_text), egui::Color32::from_rgb(120, 230, 120))
-        },
-        Instruction::ConditionalBlue(inner) => {
-            let inner_text = instruction_to_short_string(inner);
-            (format!("B:{}", inner_text), egui::Color32::from_rgb(120, 120, 230))
-        },
+    let (text, color, use_image) = instruction_display_info(current_instruction);
+    let slot_size = egui::Vec2::new(38.0, 38.0); // Taille réduite des slots
+
+    // Créer un bouton personnalisé avec image redimensionnée
+    let (rect, response) = ui.allocate_exact_size(slot_size, egui::Sense::click());
+
+    // Dessiner le fond du bouton
+    let visuals = ui.style().interact(&response);
+
+    // Définir le stroke selon si c'est en cours d'exécution
+    let stroke = if is_executing {
+        egui::Stroke::new(3.0, egui::Color32::WHITE)
+    } else {
+        egui::Stroke::new(1.0, egui::Color32::from_gray(100))
     };
 
-    // Bouton du slot
-    let button = egui::Button::new(&text)
-        .fill(bg_color)
-        .min_size(egui::Vec2::new(60.0, 25.0));
+    ui.painter().rect(
+        rect,
+        visuals.corner_radius,
+        color,
+        stroke,
+        egui::StrokeKind::Outside,
+    );
 
-    if ui.add(button).clicked() {
+    // Dessiner l'image ou le texte
+    if use_image && !matches!(current_instruction, Instruction::Noop) {
+        let texture = get_texture_for_instruction(current_instruction, textures);
+
+        if let Some(tex) = texture {
+            // Dessiner l'image redimensionnée
+            let image_size = 25.0; // Taille de l'image dans le slot (réduite)
+            let image_rect =
+                egui::Rect::from_center_size(rect.center(), egui::Vec2::splat(image_size));
+            ui.painter().image(
+                tex.id(),
+                image_rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        } else {
+            // Texte de secours
+            ui.painter().text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                text,
+                egui::FontId::default(),
+                egui::Color32::WHITE,
+            );
+        }
+    } else if !text.is_empty() {
+        // Dessiner le texte pour les fonctions
+        let font_size = if matches!(current_instruction, Instruction::CallFunction(_)) {
+            14.0 // Taille réduite
+        } else {
+            12.0
+        };
+        ui.painter().text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            text,
+            egui::FontId::proportional(font_size),
+            egui::Color32::WHITE,
+        );
+    }
+
+    if response.clicked() {
         handle_slot_click(edit_state, function, slot_index);
+    }
+
+    if !matches!(current_instruction, Instruction::Noop) {
+        response.on_hover_text(instruction_to_string(current_instruction));
     }
 }
 
-// Gestion du clic sur un slot - CORRIGÉ pour éviter suppression d'instructions et conflit de borrow
+// Bouton d'instruction avec image
+fn instruction_image_button(
+    ui: &mut egui::Ui,
+    edit_state: &mut EguiEditState,
+    texture: &Option<egui::TextureHandle>,
+    tooltip: &str,
+    instruction: Instruction,
+) {
+    let selected =
+        matches!(&edit_state.selected_instruction, Some(inst) if same_variant(inst, &instruction));
+    let button_size = egui::Vec2::new(40.0, 40.0); // Taille réduite
+
+    // Créer un bouton personnalisé
+    let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
+
+    // Couleur de fond selon la sélection
+    let bg_color = if selected {
+        egui::Color32::from_gray(220)
+    } else {
+        egui::Color32::from_gray(160)
+    };
+
+    // Dessiner le fond
+    ui.painter().rect(
+        rect,
+        egui::CornerRadius::same(3),
+        bg_color,
+        egui::Stroke::new(1.0, egui::Color32::from_gray(100)),
+        egui::StrokeKind::Outside,
+    );
+
+    // Dessiner l'image ou le texte de secours
+    if let Some(tex) = texture {
+        let image_size = 28.0; // Taille de l'image dans le bouton (réduite)
+        let image_rect = egui::Rect::from_center_size(rect.center(), egui::Vec2::splat(image_size));
+        let tint = if selected {
+            egui::Color32::WHITE
+        } else {
+            egui::Color32::from_gray(200)
+        };
+        ui.painter().image(
+            tex.id(),
+            image_rect,
+            egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            tint,
+        );
+    } else {
+        // Fallback si l'image n'est pas chargée
+        let icon = match instruction {
+            Instruction::Forward => "→",
+            Instruction::TurnLeft => "↶",
+            Instruction::TurnRight => "↷",
+            _ => "?",
+        };
+        ui.painter().text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            icon,
+            egui::FontId::proportional(18.0),
+            egui::Color32::WHITE,
+        );
+    }
+
+    if response.on_hover_text(tooltip).clicked() {
+        if selected {
+            edit_state.selected_instruction = None;
+        } else {
+            edit_state.selected_instruction = Some(instruction);
+            edit_state.selected_condition = None;
+        }
+    }
+}
+
+// Bouton d'instruction avec texte (pour les fonctions)
+fn instruction_text_button(
+    ui: &mut egui::Ui,
+    edit_state: &mut EguiEditState,
+    text: &str,
+    tooltip: &str,
+    instruction: Instruction,
+    font_size: f32,
+) {
+    let selected =
+        matches!(&edit_state.selected_instruction, Some(inst) if same_variant(inst, &instruction));
+    let color = if selected {
+        egui::Color32::from_gray(220)
+    } else {
+        egui::Color32::from_gray(160)
+    };
+
+    let rich_text = egui::RichText::new(text).size(font_size);
+
+    if ui
+        .add_sized(
+            [40.0, 40.0], // Taille réduite
+            egui::Button::new(rich_text).fill(color),
+        )
+        .on_hover_text(tooltip)
+        .clicked()
+    {
+        if selected {
+            edit_state.selected_instruction = None;
+        } else {
+            edit_state.selected_instruction = Some(instruction);
+            edit_state.selected_condition = None;
+        }
+    }
+}
+
+// Gestion du clic sur un slot
 fn handle_slot_click(
     edit_state: &mut EguiEditState,
     function: &mut Vec<Instruction>,
     slot_index: usize,
 ) {
-    // Cloner les valeurs sélectionnées pour éviter les conflits de borrow
     let selected_instruction = edit_state.selected_instruction.clone();
     let selected_condition = edit_state.selected_condition.clone();
 
-    match (&selected_instruction, &selected_condition) {
-        // Instruction simple sélectionnée
+    match (selected_instruction, selected_condition) {
+        // Instruction simple
         (Some(instruction), None) => {
-            // Étendre la fonction si nécessaire
-            while function.len() <= slot_index {
-                function.push(Instruction::Noop);
-            }
-            function[slot_index] = instruction.clone();
+            ensure_function_size(function, slot_index);
+            function[slot_index] = instruction;
             edit_state.selected_instruction = None;
-            info!("Instruction placée: {} dans slot {}", instruction_to_display_string(instruction), slot_index);
-        },
+        }
 
-        // Condition sélectionnée - wrapper l'instruction existante SANS la supprimer
+        // Condition seule - wrapper l'instruction existante
         (None, Some(condition)) => {
-            if slot_index < function.len() {
+            if slot_index < function.len() && !matches!(function[slot_index], Instruction::Noop) {
                 let existing = function[slot_index].clone();
-                if !matches!(existing, Instruction::Noop) {
-                    let wrapped = create_conditional_instruction(existing.clone(), *condition);
-                    function[slot_index] = wrapped;
-                    info!("Instruction {} wrappée avec condition {:?}", instruction_to_display_string(&existing), condition);
-                } else {
-                    info!("Case vide - sélectionnez une instruction à ajouter");
-                }
-            } else {
-                info!("Slot hors fonction - sélectionnez une instruction à ajouter");
+                function[slot_index] = wrap_with_condition(existing, condition);
             }
             edit_state.selected_condition = None;
-        },
+        }
 
-        // Instruction ET condition - créer conditionnelle directement
+        // Instruction + condition
         (Some(instruction), Some(condition)) => {
-            while function.len() <= slot_index {
-                function.push(Instruction::Noop);
-            }
-            let conditional = create_conditional_instruction(instruction.clone(), *condition);
-            function[slot_index] = conditional.clone();
+            ensure_function_size(function, slot_index);
+            function[slot_index] = wrap_with_condition(instruction, condition);
             edit_state.selected_instruction = None;
             edit_state.selected_condition = None;
-            info!("Instruction conditionnelle créée: {}", instruction_to_display_string(&conditional));
-        },
+        }
 
-        // Rien de sélectionné - supprimer
+        // Rien - effacer
         (None, None) => {
             if slot_index < function.len() {
-                let old_instruction = function[slot_index].clone();
                 function[slot_index] = Instruction::Noop;
-                info!("Instruction supprimée: {}", instruction_to_display_string(&old_instruction));
             }
-        },
+        }
     }
 }
 
-// Interface d'état de sélection
-fn selection_state_ui(ui: &mut egui::Ui, edit_state: &EguiEditState) {
-    ui.horizontal(|ui| {
-        ui.label("État:");
+// Fonctions utilitaires
 
-        match (&edit_state.selected_instruction, &edit_state.selected_condition) {
-            (Some(inst), None) => {
-                ui.colored_label(egui::Color32::BLUE, format!("Instruction: {}", instruction_to_display_string(inst)));
-            },
-            (None, Some(cond)) => {
-                let cond_name = match cond {
-                    TileColor::Red => "Rouge",
-                    TileColor::Green => "Vert",
-                    TileColor::Blue => "Bleu",
-                    TileColor::Gray => "Gris",
-                };
-                ui.colored_label(egui::Color32::GREEN, format!("Condition: {}", cond_name));
-            },
-            (Some(inst), Some(cond)) => {
-                let cond_name = match cond {
-                    TileColor::Red => "Rouge",
-                    TileColor::Green => "Vert",
-                    TileColor::Blue => "Bleu",
-                    TileColor::Gray => "Gris",
-                };
-                ui.colored_label(egui::Color32::YELLOW, format!("Instruction: {} + Condition: {}", instruction_to_display_string(inst), cond_name));
-            },
-            (None, None) => {
-                ui.colored_label(egui::Color32::GRAY, "Mode suppression");
-            },
+fn condition_button(
+    ui: &mut egui::Ui,
+    edit_state: &mut EguiEditState,
+    label: &str,
+    tile_color: TileColor,
+    color: egui::Color32,
+    size: f32,
+) {
+    let selected = matches!(&edit_state.selected_condition, Some(cond) if *cond == tile_color);
+    let button_color = if selected {
+        color.gamma_multiply(1.5)
+    } else {
+        color
+    };
+
+    if ui
+        .add_sized([size, size], egui::Button::new(label).fill(button_color))
+        .clicked()
+    {
+        if selected {
+            edit_state.selected_condition = None;
+        } else {
+            edit_state.selected_condition = Some(tile_color);
+            edit_state.selected_instruction = None;
         }
-    });
+    }
 }
 
-// Fonctions helper
-fn instruction_to_display_string(instruction: &Instruction) -> String {
+fn instruction_display_info(instruction: &Instruction) -> (String, egui::Color32, bool) {
+    match instruction {
+        Instruction::Noop => ("".to_string(), egui::Color32::from_gray(80), false),
+        Instruction::Forward => ("→".to_string(), egui::Color32::WHITE, true),
+        Instruction::TurnLeft => ("↶".to_string(), egui::Color32::WHITE, true),
+        Instruction::TurnRight => ("↷".to_string(), egui::Color32::WHITE, true),
+        Instruction::CallFunction(id) => {
+            (format!("F{}", id + 1), egui::Color32::from_gray(140), false)
+        }
+        Instruction::ConditionalRed(_) => {
+            ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true)
+        }
+        Instruction::ConditionalGreen(_) => {
+            ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true)
+        }
+        Instruction::ConditionalBlue(_) => {
+            ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true)
+        }
+    }
+}
+
+fn instruction_to_string(instruction: &Instruction) -> String {
     match instruction {
         Instruction::Forward => "Avancer".to_string(),
-        Instruction::TurnLeft => "Gauche".to_string(),
-        Instruction::TurnRight => "Droite".to_string(),
-        Instruction::CallFunction(id) => format!("F{}", id + 1),
-        Instruction::ConditionalRed(inner) => format!("R:{}", instruction_to_display_string(inner)),
-        Instruction::ConditionalGreen(inner) => format!("G:{}", instruction_to_display_string(inner)),
-        Instruction::ConditionalBlue(inner) => format!("B:{}", instruction_to_display_string(inner)),
-        Instruction::Noop => "".to_string(),
+        Instruction::TurnLeft => "Tourner à gauche".to_string(),
+        Instruction::TurnRight => "Tourner à droite".to_string(),
+        Instruction::CallFunction(id) => format!("Appeler F{}", id + 1),
+        Instruction::ConditionalRed(inner) => format!("Si Rouge: {}", instruction_to_string(inner)),
+        Instruction::ConditionalGreen(inner) => {
+            format!("Si Vert: {}", instruction_to_string(inner))
+        }
+        Instruction::ConditionalBlue(inner) => format!("Si Bleu: {}", instruction_to_string(inner)),
+        Instruction::Noop => "Vide".to_string(),
     }
 }
 
-fn instruction_to_short_string(instruction: &Instruction) -> String {
-    match instruction {
-        Instruction::Forward => "→".to_string(),
-        Instruction::TurnLeft => "⤺".to_string(),
-        Instruction::TurnRight => "⤻".to_string(),
-        Instruction::CallFunction(id) => format!("F{}", id + 1),
-        Instruction::Noop => "".to_string(),
-        _ => "?".to_string(),
-    }
-}
-
-fn create_conditional_instruction(instruction: Instruction, condition: TileColor) -> Instruction {
+fn wrap_with_condition(instruction: Instruction, condition: TileColor) -> Instruction {
     match condition {
         TileColor::Red => Instruction::ConditionalRed(Box::new(instruction)),
         TileColor::Green => Instruction::ConditionalGreen(Box::new(instruction)),
@@ -430,14 +828,61 @@ fn create_conditional_instruction(instruction: Instruction, condition: TileColor
     }
 }
 
-// Plugin pour remplacer l'UI Bevy native
+fn ensure_function_size(function: &mut Vec<Instruction>, slot_index: usize) {
+    while function.len() <= slot_index {
+        function.push(Instruction::Noop);
+    }
+}
+
+fn same_variant(a: &Instruction, b: &Instruction) -> bool {
+    std::mem::discriminant(a) == std::mem::discriminant(b)
+}
+
+fn reset_level_state(
+    robot_query: &mut Query<&mut Robot, With<CurrentLevel>>,
+    grid_query: &mut Query<&mut Grid, With<CurrentLevel>>,
+) {
+    if let Ok(mut robot) = robot_query.single_mut() {
+        robot.reset_to_start();
+    }
+
+    if let Ok(mut grid) = grid_query.single_mut() {
+        for tile_opt in &mut grid.tiles {
+            if let Some(tile) = tile_opt {
+                tile.star_collected = false;
+            }
+        }
+    }
+}
+
+fn clear_all_instructions(level_manager: &mut LevelManager) {
+    if let Some(level) = level_manager.get_current_level() {
+        let level_id = level.id;
+        if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
+            for function in &mut problem_state.functions {
+                function.clear();
+            }
+        }
+    }
+}
+
+// Plugin pour l'UI egui
 pub struct EguiUIPlugin;
 
 impl Plugin for EguiUIPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_plugins(EguiPlugin { enable_multipass_for_primary_context: true })
-            .init_resource::<EguiEditState>()
-            .add_systems(EguiContextPass, ui_system.run_if(in_state(GameState::Editing)));
+        app.add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        })
+        .init_resource::<EguiEditState>()
+        .init_resource::<InstructionTextures>()
+        .add_systems(
+            Update,
+            load_instruction_textures.run_if(in_state(GameState::Editing)),
+        )
+        .add_systems(
+            EguiContextPass,
+            ui_system.run_if(in_state(GameState::Editing)),
+        );
     }
 }

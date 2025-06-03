@@ -4,4 +4,4 @@ ROBOT 2 0 EAST
 FUNCTIONS 10
 
 GRID:
-*   .   .   .   *
+*   .   G   .   *

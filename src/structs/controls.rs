@@ -40,10 +40,10 @@ impl Direction {
 
     pub fn get_offset(self) -> (i32, i32) {
         match self {
-            Direction::North => (0, -1),
-            Direction::East => (1, 0),
-            Direction::South => (0, 1),
-            Direction::West => (-1, 0),
+            Direction::North => (0, -1),  // Vers le haut de la grille
+            Direction::East => (1, 0),    // Vers la droite
+            Direction::South => (0, 1),   // Vers le bas de la grille
+            Direction::West => (-1, 0),   // Vers la gauche
         }
     }
 
@@ -59,11 +59,13 @@ impl Direction {
     }
 
     pub fn to_rotation(self) -> f32 {
+        // En Bevy 2D, 0 rad pointe vers la droite, et les rotations positives vont dans le sens anti-horaire
+        // Donc pour un triangle qui pointe vers le haut par défaut :
         match self {
-            Direction::North => 0.0,
-            Direction::East => std::f32::consts::PI / 2.0,
-            Direction::South => std::f32::consts::PI,
-            Direction::West => -std::f32::consts::PI / 2.0,
+            Direction::North => 0.0,                          // Pointe vers le haut (défaut)
+            Direction::East => -std::f32::consts::PI / 2.0,   // 90° horaire
+            Direction::South => std::f32::consts::PI,         // 180°
+            Direction::West => std::f32::consts::PI / 2.0,    // 90° anti-horaire
         }
     }
 }

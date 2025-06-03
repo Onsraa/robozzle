@@ -4,6 +4,8 @@ use crate::systems::display::update_stars_display_system;
 use crate::systems::grid::display_grid_system;
 use crate::systems::level::handle_level_switch_system;
 use crate::systems::robot::update_robot_position_system;
+use crate::systems::execution::{execution_system, update_star_counter_system, check_completion_system};
+use crate::states::game::GameState;
 use bevy::prelude::*;
 
 // Système pour setup la caméra
@@ -28,6 +30,16 @@ impl Plugin for GridDisplayPlugin {
                     handle_level_switch_system,
                 )
                     .chain(),
+            )
+            .add_systems(
+                Update,
+                (
+                    execution_system,
+                    update_star_counter_system,
+                    check_completion_system,
+                )
+                    .chain()
+                    .run_if(in_state(GameState::Editing)),
             );
     }
 }
