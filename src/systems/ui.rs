@@ -89,17 +89,49 @@ pub fn ui_system(
     textures: Res<InstructionTextures>,
     mut level_switch_events: EventWriter<SwitchLevelEvent>,
     mut display_config: ResMut<GridDisplayConfig>,
+    game_timer: Res<crate::resources::game::GameTimer>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let ctx = contexts.ctx_mut();
 
-    // Panel de gauche pour la sélection des niveaux
+    // Panel de gauche pour la sélection des niveaux (toujours affiché maintenant)
     let panel_width = 200.0;
     egui::SidePanel::left("level_selector")
         .default_width(panel_width)
         .show(ctx, |ui| {
             ui.add_space(8.0);
-            ui.heading("📋 Niveaux");
+
+            // Titre selon le mode
+            if level_manager.get_current_level_type() == crate::resources::level::LevelType::Tutorial {
+                ui.heading("🎓 Tutoriel");
+            } else {
+                ui.heading("📋 Niveaux");
+            }
             ui.separator();
+
+            // Chronomètre seulement en mode normal
+            if level_manager.get_current_level_type() == crate::resources::level::LevelType::Normal {
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(10.0);
+                    let remaining_mins = game_timer.remaining_minutes();
+                    let remaining_secs = game_timer.remaining_seconds();
+
+                    let time_color = if remaining_mins < 5 {
+                        egui::Color32::from_rgb(200, 80, 80)
+                    } else if remaining_mins < 10 {
+                        egui::Color32::from_rgb(200, 200, 80)
+                    } else {
+                        egui::Color32::from_rgb(80, 200, 80)
+                    };
+
+                    ui.label(egui::RichText::new(format!("⏱️ {:02}:{:02}", remaining_mins, remaining_secs))
+                        .size(18.0)
+                        .color(time_color)
+                        .strong());
+                });
+                ui.separator();
+            }
             ui.add_space(8.0);
 
             egui::ScrollArea::vertical().show(ui, |ui| {
@@ -144,7 +176,14 @@ pub fn ui_system(
                                 button.fill(egui::Color32::from_gray(100))
                             };
 
-                            if ui.add_sized([110.0, 25.0], button).clicked() {
+                            // En mode tutoriel, on ne peut pas changer de niveau si pas complété
+                            let can_switch = if level_manager.get_current_level_type() == crate::resources::level::LevelType::Tutorial {
+                                i <= current_level_id || (i == current_level_id + 1 && level_manager.can_proceed_to_next())
+                            } else {
+                                true
+                            };
+
+                            if ui.add_sized([110.0, 25.0], button).clicked() && can_switch {
                                 if i != current_level_id {
                                     level_switch_events.send(SwitchLevelEvent(i));
                                     execution_engine.stop();
@@ -165,6 +204,25 @@ pub fn ui_system(
                 }
 
                 ui.add_space(8.0);
+
+                // Bouton "Suivant" si tous les tutoriels sont complétés
+                if level_manager.get_current_level_type() == crate::resources::level::LevelType::Tutorial
+                    && level_manager.are_all_tutorials_completed() {
+                    ui.separator();
+                    ui.add_space(8.0);
+
+                    ui.vertical_centered(|ui| {
+                        if ui.add_sized(
+                            [150.0, 40.0],
+                            egui::Button::new("➡️ Suivant")
+                                .fill(egui::Color32::from_rgb(80, 200, 80))
+                        ).clicked() {
+                            next_state.set(GameState::PlayerInfo);
+                        }
+                    });
+
+                    ui.add_space(8.0);
+                }
             });
         });
 
@@ -353,7 +411,7 @@ pub fn ui_system(
                         .clicked()
                     {
                         if execution_engine.is_stopped() {
-                            reset_level_state(&mut robot_query, &mut grid_query);
+                            reset_level_state(&mut robot_query, &mut grid_query, &mut level_manager);
                             execution_engine.start_execution();
                         } else if execution_engine.is_executing() {
                             execution_engine.pause();
@@ -375,7 +433,7 @@ pub fn ui_system(
                         {
                             execution_engine.stop();
                             execution_engine.clear_error();
-                            reset_level_state(&mut robot_query, &mut grid_query);
+                            reset_level_state(&mut robot_query, &mut grid_query, &mut level_manager);
                         }
 
                         if ui
@@ -841,15 +899,31 @@ fn same_variant(a: &Instruction, b: &Instruction) -> bool {
 fn reset_level_state(
     robot_query: &mut Query<&mut Robot, With<CurrentLevel>>,
     grid_query: &mut Query<&mut Grid, With<CurrentLevel>>,
+    level_manager: &mut LevelManager,
 ) {
     if let Ok(mut robot) = robot_query.single_mut() {
         robot.reset_to_start();
     }
 
     if let Ok(mut grid) = grid_query.single_mut() {
-        for tile_opt in &mut grid.tiles {
-            if let Some(tile) = tile_opt {
-                tile.star_collected = false;
+        // Reset les étoiles seulement si le niveau n'est pas déjà complété
+        if let Some(current_level) = level_manager.get_current_level() {
+            let is_completed = level_manager.get_problem_state(current_level.id)
+                .map(|state| state.is_completed)
+                .unwrap_or(false);
+
+            if !is_completed {
+                // Réinitialiser l'état des étoiles depuis les données du niveau
+                for (i, tile_opt) in grid.tiles.iter_mut().enumerate() {
+                    if let Some(tile) = tile_opt {
+                        tile.star_collected = false;
+                    }
+                }
+
+                // Réinitialiser le compteur d'étoiles
+                if let Some(problem_state) = level_manager.get_problem_state_mut(current_level.id) {
+                    problem_state.reset_stars();
+                }
             }
         }
     }
@@ -874,15 +948,19 @@ impl Plugin for EguiUIPlugin {
         app.add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
         })
-        .init_resource::<EguiEditState>()
-        .init_resource::<InstructionTextures>()
-        .add_systems(
-            Update,
-            load_instruction_textures.run_if(in_state(GameState::Editing)),
-        )
-        .add_systems(
-            EguiContextPass,
-            ui_system.run_if(in_state(GameState::Editing)),
-        );
+            .init_resource::<EguiEditState>()
+            .init_resource::<InstructionTextures>()
+            .add_systems(
+                Update,
+                load_instruction_textures.run_if(
+                    in_state(GameState::Editing).or(in_state(GameState::Tutorial))
+                ),
+            )
+            .add_systems(
+                EguiContextPass,
+                ui_system.run_if(
+                    in_state(GameState::Editing).or(in_state(GameState::Tutorial))
+                ),
+            );
     }
 }

@@ -3,7 +3,6 @@ use crate::resources::game::GameTimer;
 use crate::resources::timer::LevelTimer;
 use crate::resources::level::{LevelManager, LevelType};
 use crate::events::game::TimeUpEvent;
-use crate::events::level::SwitchLevelEvent;
 use crate::states::game::GameState;
 
 // Système pour mettre à jour le timer global
@@ -15,7 +14,9 @@ pub fn update_game_timer_system(
 ) {
     // Ne compte le temps que pour les niveaux normaux
     if level_manager.get_current_level_type() == LevelType::Normal {
-        if game_timer.timer.tick(time.delta()) {
+        game_timer.tick(time.delta());
+
+        if game_timer.just_finished() {
             // Le temps est écoulé
             time_up_events.send(TimeUpEvent);
             info!("Temps écoulé!");
@@ -58,15 +59,12 @@ pub fn record_completion_time_system(
 pub fn reset_level_timer_system(
     mut level_timer: ResMut<LevelTimer>,
     level_manager: Res<LevelManager>,
-    mut ev_switchlevel: EventReader<SwitchLevelEvent>,
 ) {
-    if !ev_switchlevel.is_empty() {
-        level_timer.reset();
+    // Reset le timer seulement si on change de niveau (détecté par le changement d'état)
+    level_timer.reset();
 
-        if let Some(current_level) = level_manager.get_current_level() {
-            info!("Timer réinitialisé pour le niveau: {}", current_level.name);
-        }
-        ev_switchlevel.clear();
+    if let Some(current_level) = level_manager.get_current_level() {
+        info!("Timer réinitialisé pour le niveau: {}", current_level.name);
     }
 }
 

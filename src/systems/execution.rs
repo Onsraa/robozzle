@@ -271,9 +271,6 @@ pub fn check_completion_system(
             // Enregistrer le temps de complétion
             problem_state.completion_time_recorded = true;
             problem_state.record_completion_time();
-            info!("Niveau {} terminé avec succès en {:.1}s!", 
-                  level_manager.get_current_level().unwrap().name,
-                  problem_state.get_completion_time_seconds());
         }
     }
 }

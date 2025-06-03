@@ -6,6 +6,5 @@ pub mod loading;
 pub mod execution;
 pub mod ui;
 pub mod player;
-pub mod ui_tutorial;
 pub mod timer;
 pub mod time_up;
