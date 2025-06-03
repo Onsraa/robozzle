@@ -15,6 +15,9 @@ pub struct PlayerInfoUI;
 #[derive(Component)]
 pub struct SubmitButton;
 
+#[derive(Component)]
+pub struct ErrorMessage;
+
 // Système pour créer l'interface
 pub fn setup_player_info_ui(
     mut commands: Commands,
@@ -79,11 +82,13 @@ pub fn setup_player_info_ui(
                     },
                 ));
 
-                // Spawn avec moins de components dans le tuple
+                // Ajouter Button et Interaction pour permettre la détection des clics
                 parent.spawn((
                     TextInput,
                     TextInputValue("".to_string()),
-                    TextInputInactive(true), // Commence inactif avec le bon paramètre
+                    TextInputInactive(true),
+                    Button, // Ajout du composant Button
+                    Interaction::default(), // Ajout du composant Interaction
                     Node {
                         width: Val::Px(300.0),
                         padding: UiRect::all(Val::Px(10.0)),
@@ -92,8 +97,8 @@ pub fn setup_player_info_ui(
                     },
                     BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
                     BorderColor(Color::srgb(0.5, 0.5, 0.5)),
-                ))
-                    .insert(LastNameInput); // Insérer séparément
+                    LastNameInput,
+                ));
             });
 
             // Champ Prénom
@@ -115,11 +120,13 @@ pub fn setup_player_info_ui(
                     },
                 ));
 
-                // Spawn avec moins de components dans le tuple
+                // Ajouter Button et Interaction pour permettre la détection des clics
                 parent.spawn((
                     TextInput,
                     TextInputValue("".to_string()),
-                    TextInputInactive(true), // Commence inactif avec le bon paramètre
+                    TextInputInactive(true),
+                    Button, // Ajout du composant Button
+                    Interaction::default(), // Ajout du composant Interaction
                     Node {
                         width: Val::Px(300.0),
                         padding: UiRect::all(Val::Px(10.0)),
@@ -128,8 +135,8 @@ pub fn setup_player_info_ui(
                     },
                     BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
                     BorderColor(Color::srgb(0.5, 0.5, 0.5)),
-                ))
-                    .insert(FirstNameInput); // Insérer séparément
+                    FirstNameInput,
+                ));
             });
 
             // Bouton de validation
@@ -177,8 +184,8 @@ pub fn setup_player_info_ui(
 pub fn handle_input_focus(
     mut commands: Commands,
     interaction_query: Query<
-    (Entity, &Interaction, Option<&LastNameInput>, Option<&FirstNameInput>),
-    (Changed<Interaction>, With<TextInput>)
+        (Entity, &Interaction, Option<&LastNameInput>, Option<&FirstNameInput>),
+        (Changed<Interaction>, With<TextInput>)
     >,
     mut all_inputs: Query<Entity, With<TextInput>>,
 ) {
@@ -192,6 +199,13 @@ pub fn handle_input_focus(
             }
             // Activer l'input cliqué
             commands.entity(entity).remove::<TextInputInactive>();
+
+            // Log pour debug
+            if is_last_name.is_some() {
+                info!("Activation du champ Nom");
+            } else if is_first_name.is_some() {
+                info!("Activation du champ Prénom");
+            }
         }
     }
 }
@@ -204,6 +218,7 @@ pub fn handle_player_info_validation(
     last_name_query: Query<&TextInputValue, With<LastNameInput>>,
     first_name_query: Query<&TextInputValue, With<FirstNameInput>>,
     mut button_colors: Query<&mut BackgroundColor, With<SubmitButton>>,
+    mut button_text_colors: Query<&mut TextColor, Without<ErrorMessage>>,
     mut error_visibility: Query<&mut Visibility, With<ErrorMessage>>,
 ) {
     let Ok(last_name_value) = last_name_query.single() else { return };
@@ -247,9 +262,6 @@ pub fn cleanup_player_info_ui(
     ui_query: Query<Entity, With<PlayerInfoUI>>,
 ) {
     for entity in ui_query.iter() {
-        commands.entity(entity).despawn();
+        commands.entity(entity).despawn_recursive();
     }
 }
-
-#[derive(Component)]
-pub struct ErrorMessage;
