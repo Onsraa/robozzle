@@ -6,8 +6,8 @@ use crate::events::player::*;
 use crate::events::robot::*;
 use crate::plugins::grid::*;
 use crate::plugins::loading::*;
+use crate::plugins::menu::*;
 use crate::plugins::player::*;
-use crate::plugins::tutorial::*;
 use crate::plugins::timer::*;
 use crate::resources::execution::*;
 use crate::resources::game::*;
@@ -62,6 +62,7 @@ fn main() {
         // Plugins personnalisés
         .add_plugins((
             LevelLoadingPlugin, // Plugin de chargement des niveaux
+            MenuPlugin,         // Plugin de menu et auto-start
             PlayerInfoPlugin,   // Plugin pour la saisie des infos joueur
             GridDisplayPlugin,  // Plugin d'affichage de la grille
             EguiUIPlugin,       // Plugin d'édition d'instructions
