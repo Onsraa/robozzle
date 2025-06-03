@@ -5,7 +5,7 @@ use crate::events::level::SwitchLevelEvent;
 use crate::resources::execution::ExecutionEngine;
 use crate::resources::grid::GridDisplayConfig;
 use crate::resources::level::LevelManager;
-use crate::resources::ui::{DragDropState, FunctionSnapshot, InstructionHistory};
+use crate::resources::ui::{DragDropState, InstructionHistory};
 use crate::states::game::GameState;
 use crate::structs::controls::Instruction;
 use crate::structs::tile::TileColor;
@@ -148,9 +148,9 @@ pub fn ui_system(
                             "⏱️ {:02}:{:02}",
                             remaining_mins, remaining_secs
                         ))
-                            .size(18.0)
-                            .color(time_color)
-                            .strong(),
+                        .size(18.0)
+                        .color(time_color)
+                        .strong(),
                     );
                 });
                 ui.separator();
@@ -205,7 +205,7 @@ pub fn ui_system(
                             {
                                 i <= current_level_id
                                     || (i == current_level_id + 1
-                                    && level_manager.can_proceed_to_next())
+                                        && level_manager.can_proceed_to_next())
                             } else {
                                 true
                             };
@@ -397,10 +397,12 @@ pub fn ui_system(
                             &mut edit_state,
                             &mut level_manager,
                             &textures,
-                            &execution_engine,
+                            &mut execution_engine, 
                             &mut drag_drop_state,
                             &mut history,
                             time.elapsed_secs_f64(),
+                            &mut robot_query,
+                            &mut grid_query,
                         );
                     });
                 });
@@ -428,7 +430,7 @@ pub fn ui_system(
                                             state.stars_collected, level.total_stars
                                         ));
                                     }
-                                }
+                                },
                             );
                         }
 
@@ -444,10 +446,7 @@ pub fn ui_system(
                         };
 
                         if ui
-                            .add_sized(
-                                [button_width, 30.0],
-                                egui::Button::new(text).fill(color),
-                            )
+                            .add_sized([button_width, 30.0], egui::Button::new(text).fill(color))
                             .clicked()
                         {
                             if execution_engine.is_stopped() {
@@ -465,18 +464,19 @@ pub fn ui_system(
                         }
 
                         // Bouton Step
-                        let step_enabled = execution_engine.is_paused() || execution_engine.is_stopped();
-                        let step_button = egui::Button::new("⏭️ Step")
-                            .fill(if step_enabled {
-                                egui::Color32::from_rgb(100, 150, 200)
-                            } else {
-                                egui::Color32::from_gray(80)
-                            });
+                        let step_enabled =
+                            execution_engine.is_paused() || execution_engine.is_stopped();
+                        let step_button = egui::Button::new("⏭️ Step").fill(if step_enabled {
+                            egui::Color32::from_rgb(100, 150, 200)
+                        } else {
+                            egui::Color32::from_gray(80)
+                        });
 
                         if ui
                             .add_sized([button_width, 30.0], step_button)
                             .on_hover_text("Exécuter une instruction")
-                            .clicked() && step_enabled
+                            .clicked()
+                            && step_enabled
                         {
                             if execution_engine.is_stopped() {
                                 reset_level_state(
@@ -516,27 +516,29 @@ pub fn ui_system(
                                 ui.add_space(4.0);
 
                                 if ui
-                                    .add_sized([button_width / 2.0 - 2.0, 30.0], egui::Button::new("🗑️ Clear"))
+                                    .add_sized(
+                                        [button_width / 2.0 - 2.0, 30.0],
+                                        egui::Button::new("🗑️ Clear"),
+                                    )
                                     .clicked()
                                 {
                                     clear_all_instructions(&mut level_manager);
                                     execution_engine.stop();
                                 }
-                            }
+                            },
                         );
 
                         // Bouton de vitesse
                         let speed_text = match execution_engine.get_speed() {
                             crate::resources::execution::ExecutionSpeed::Normal => "⚡ Normal",
                             crate::resources::execution::ExecutionSpeed::Fast => "⚡⚡ Fast",
-                            crate::resources::execution::ExecutionSpeed::VeryFast => "⚡⚡⚡ V.Fast",
+                            crate::resources::execution::ExecutionSpeed::VeryFast => {
+                                "⚡⚡⚡ V.Fast"
+                            }
                         };
 
                         if ui
-                            .add_sized(
-                                [button_width, 30.0],
-                                egui::Button::new(speed_text),
-                            )
+                            .add_sized([button_width, 30.0], egui::Button::new(speed_text))
                             .clicked()
                         {
                             execution_engine.change_speed();
@@ -557,7 +559,11 @@ pub fn ui_system(
 }
 
 // Gérer le drag & drop global
-fn handle_drag_drop(ctx: &egui::Context, drag_drop_state: &mut DragDropState, edit_state: &mut EguiEditState) {
+fn handle_drag_drop(
+    ctx: &egui::Context,
+    drag_drop_state: &mut DragDropState,
+    edit_state: &mut EguiEditState,
+) {
     if drag_drop_state.is_dragging {
         // Afficher l'instruction ou la condition en cours de drag
         let mouse_pos = ctx.pointer_hover_pos().unwrap_or(egui::Pos2::ZERO);
@@ -608,7 +614,11 @@ fn condition_button_draggable(
         color
     };
 
-    let button_label = if tile_color == TileColor::Gray { "X" } else { label };
+    let button_label = if tile_color == TileColor::Gray {
+        "X"
+    } else {
+        label
+    };
 
     let (id, rect) = ui.allocate_space(egui::Vec2::new(size, size));
     let response = ui.interact(rect, id, egui::Sense::click_and_drag());
@@ -647,7 +657,11 @@ fn condition_button_draggable(
         }
     }
 
-    response.on_hover_text(if tile_color == TileColor::Gray { "Enlever la couleur" } else { "Condition de couleur" });
+    response.on_hover_text(if tile_color == TileColor::Gray {
+        "Enlever la couleur"
+    } else {
+        "Condition de couleur"
+    });
 }
 
 // Bouton d'instruction avec image et support du drag & drop
@@ -746,20 +760,37 @@ fn instruction_text_button_draggable(
 ) {
     let selected =
         matches!(&edit_state.selected_instruction, Some(inst) if same_variant(inst, &instruction));
-    let color = if selected {
+
+    let button_size = egui::Vec2::new(35.0, 35.0);
+    let (id, rect) = ui.allocate_space(button_size);
+    let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+
+    // Couleur de fond selon la sélection
+    let bg_color = if selected {
         egui::Color32::from_gray(220)
+    } else if response.hovered() {
+        egui::Color32::from_gray(180)
     } else {
         egui::Color32::from_gray(160)
     };
 
-    let rich_text = egui::RichText::new(text)
-        .size(font_size)
-        .color(egui::Color32::WHITE); // Texte blanc pour meilleure visibilité
+    // Dessiner le fond
+    ui.painter().rect(
+        rect,
+        egui::CornerRadius::same(3),
+        bg_color,
+        egui::Stroke::new(1.0, egui::Color32::from_gray(100)),
+        egui::StrokeKind::Outside,
+    );
 
-    let button = egui::Button::new(rich_text).fill(color);
-    let response = ui
-        .add_sized([35.0, 35.0], button)
-        .on_hover_text(tooltip);
+    // Dessiner le texte
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        text,
+        egui::FontId::proportional(font_size),
+        egui::Color32::WHITE,
+    );
 
     // Gérer le drag
     if response.drag_started() {
@@ -776,6 +807,8 @@ fn instruction_text_button_draggable(
             edit_state.selected_condition = None;
         }
     }
+
+    response.on_hover_text(tooltip);
 }
 
 // Éditeur de fonctions - maintenant en lignes (une fonction par ligne)
@@ -784,10 +817,12 @@ fn function_editor_ui(
     edit_state: &mut EguiEditState,
     level_manager: &mut LevelManager,
     textures: &InstructionTextures,
-    execution_engine: &ExecutionEngine,
+    execution_engine: &mut ExecutionEngine, // Changé en mutable
     drag_drop_state: &mut DragDropState,
     history: &mut InstructionHistory,
     current_time: f64,
+    robot_query: &mut Query<&mut Robot, With<CurrentLevel>>, // Ajout
+    grid_query: &mut Query<&mut Grid, With<CurrentLevel>>, // Ajout
 ) {
     let level_data = level_manager
         .get_current_level()
@@ -816,6 +851,8 @@ fn function_editor_ui(
         }
     }
 
+    let mut any_modified = false;
+
     // Maintenant on peut itérer sans conflit d'emprunt
     for (func_id, mut function) in functions_data {
         let limit = function_limits.get(func_id).copied().unwrap_or(10);
@@ -826,7 +863,7 @@ fn function_editor_ui(
                 egui::RichText::new(format!("F{}", func_id + 1))
                     .size(16.0)
                     .strong()
-                    .color(egui::Color32::WHITE), // Texte blanc
+                    .color(egui::Color32::WHITE),
             );
             ui.add_space(5.0);
 
@@ -854,10 +891,12 @@ fn function_editor_ui(
                     history,
                     current_time,
                     func_id,
+                    execution_engine,
                 );
 
                 // Si la fonction a été modifiée, mettre à jour dans le level_manager
                 if modified {
+                    any_modified = true;
                     if let Some(problem_state) = level_manager.get_problem_state_mut(level_id) {
                         if func_id < problem_state.functions.len() {
                             problem_state.functions[func_id] = function.clone();
@@ -868,6 +907,11 @@ fn function_editor_ui(
         });
 
         ui.add_space(5.0);
+    }
+
+    // Si quelque chose a été modifié et que l'exécution était en cours, réinitialiser le robot
+    if any_modified && !execution_engine.is_stopped() {
+        reset_level_state(robot_query, grid_query, level_manager);
     }
 }
 
@@ -884,7 +928,9 @@ fn instruction_slot_ui(
     history: &mut InstructionHistory,
     current_time: f64,
     func_id: usize,
-) -> bool { // Retourne true si modifié
+    execution_engine: &mut ExecutionEngine, // Ajout du paramètre mutable
+) -> bool {
+    // Retourne true si modifié
     let mut modified = false;
     let (text, color, use_image) = instruction_display_info(current_instruction);
     let slot_size = egui::Vec2::new(35.0, 35.0);
@@ -947,7 +993,7 @@ fn instruction_slot_ui(
             egui::Align2::CENTER_CENTER,
             text,
             egui::FontId::proportional(font_size),
-            egui::Color32::WHITE, // Texte blanc
+            egui::Color32::WHITE,
         );
     }
 
@@ -967,6 +1013,11 @@ fn instruction_slot_ui(
                 function[slot_index] = dragged_instruction;
             }
             modified = true;
+
+            // Arrêter l'exécution si en cours
+            if execution_engine.is_executing() || execution_engine.is_paused() {
+                execution_engine.stop();
+            }
         } else if let Some(condition) = &edit_state.selected_condition {
             // Drop d'une condition seule
             ensure_function_size(function, slot_index);
@@ -980,6 +1031,11 @@ fn instruction_slot_ui(
                 function[slot_index] = wrap_with_condition(base_instruction, *condition);
             }
             modified = true;
+
+            // Arrêter l'exécution si en cours
+            if execution_engine.is_executing() || execution_engine.is_paused() {
+                execution_engine.stop();
+            }
         }
     }
 
@@ -987,6 +1043,11 @@ fn instruction_slot_ui(
     if response.clicked() {
         handle_slot_click_simple(edit_state, function, slot_index);
         modified = true;
+
+        // Arrêter l'exécution si en cours
+        if execution_engine.is_executing() || execution_engine.is_paused() {
+            execution_engine.stop();
+        }
     }
 
     // Gérer le clic droit pour vider
@@ -994,6 +1055,11 @@ fn instruction_slot_ui(
         ensure_function_size(function, slot_index);
         function[slot_index] = Instruction::Noop;
         modified = true;
+
+        // Arrêter l'exécution si en cours
+        if execution_engine.is_executing() || execution_engine.is_paused() {
+            execution_engine.stop();
+        }
     }
 
     if !matches!(current_instruction, Instruction::Noop) {
@@ -1024,14 +1090,12 @@ fn get_texture_for_instruction<'a>(
         Instruction::TurnRight => &textures.turn_right,
         Instruction::ConditionalRed(inner)
         | Instruction::ConditionalGreen(inner)
-        | Instruction::ConditionalBlue(inner) => {
-            match inner.as_ref() {
-                Instruction::Forward => &textures.forward,
-                Instruction::TurnLeft => &textures.turn_left,
-                Instruction::TurnRight => &textures.turn_right,
-                _ => &None,
-            }
-        }
+        | Instruction::ConditionalBlue(inner) => match inner.as_ref() {
+            Instruction::Forward => &textures.forward,
+            Instruction::TurnLeft => &textures.turn_left,
+            Instruction::TurnRight => &textures.turn_right,
+            _ => &None,
+        },
         _ => &None,
     }
 }
@@ -1039,9 +1103,9 @@ fn get_texture_for_instruction<'a>(
 // Fonction helper pour extraire l'instruction interne d'une instruction conditionnelle
 fn unwrap_conditional(instruction: &Instruction) -> Instruction {
     match instruction {
-        Instruction::ConditionalRed(inner) |
-        Instruction::ConditionalGreen(inner) |
-        Instruction::ConditionalBlue(inner) => inner.as_ref().clone(),
+        Instruction::ConditionalRed(inner)
+        | Instruction::ConditionalGreen(inner)
+        | Instruction::ConditionalBlue(inner) => inner.as_ref().clone(),
         other => other.clone(),
     }
 }
@@ -1125,39 +1189,33 @@ fn instruction_display_info(instruction: &Instruction) -> (String, egui::Color32
         Instruction::CallFunction(id) => {
             (format!("F{}", id + 1), egui::Color32::from_gray(140), false)
         }
-        Instruction::ConditionalRed(inner) => {
-            match inner.as_ref() {
-                Instruction::CallFunction(id) => {
-                    (format!("F{}", id + 1), egui::Color32::from_rgb(200, 80, 80), false)
-                }
-                Instruction::Noop => {
-                    ("".to_string(), egui::Color32::from_rgb(200, 80, 80), false)
-                }
-                _ => ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true)
-            }
-        }
-        Instruction::ConditionalGreen(inner) => {
-            match inner.as_ref() {
-                Instruction::CallFunction(id) => {
-                    (format!("F{}", id + 1), egui::Color32::from_rgb(80, 200, 80), false)
-                }
-                Instruction::Noop => {
-                    ("".to_string(), egui::Color32::from_rgb(80, 200, 80), false)
-                }
-                _ => ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true)
-            }
-        }
-        Instruction::ConditionalBlue(inner) => {
-            match inner.as_ref() {
-                Instruction::CallFunction(id) => {
-                    (format!("F{}", id + 1), egui::Color32::from_rgb(80, 80, 200), false)
-                }
-                Instruction::Noop => {
-                    ("".to_string(), egui::Color32::from_rgb(80, 80, 200), false)
-                }
-                _ => ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true)
-            }
-        }
+        Instruction::ConditionalRed(inner) => match inner.as_ref() {
+            Instruction::CallFunction(id) => (
+                format!("F{}", id + 1),
+                egui::Color32::from_rgb(200, 80, 80),
+                false,
+            ),
+            Instruction::Noop => ("".to_string(), egui::Color32::from_rgb(200, 80, 80), false),
+            _ => ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true),
+        },
+        Instruction::ConditionalGreen(inner) => match inner.as_ref() {
+            Instruction::CallFunction(id) => (
+                format!("F{}", id + 1),
+                egui::Color32::from_rgb(80, 200, 80),
+                false,
+            ),
+            Instruction::Noop => ("".to_string(), egui::Color32::from_rgb(80, 200, 80), false),
+            _ => ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true),
+        },
+        Instruction::ConditionalBlue(inner) => match inner.as_ref() {
+            Instruction::CallFunction(id) => (
+                format!("F{}", id + 1),
+                egui::Color32::from_rgb(80, 80, 200),
+                false,
+            ),
+            Instruction::Noop => ("".to_string(), egui::Color32::from_rgb(80, 80, 200), false),
+            _ => ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true),
+        },
     }
 }
 
@@ -1245,18 +1303,18 @@ impl Plugin for EguiUIPlugin {
         app.add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
         })
-            .init_resource::<EguiEditState>()
-            .init_resource::<InstructionTextures>()
-            .init_resource::<DragDropState>()
-            .init_resource::<InstructionHistory>()
-            .add_systems(
-                EguiContextPass,
-                load_instruction_textures
-                    .run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
-            )
-            .add_systems(
-                EguiContextPass,
-                ui_system.run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
-            );
+        .init_resource::<EguiEditState>()
+        .init_resource::<InstructionTextures>()
+        .init_resource::<DragDropState>()
+        .init_resource::<InstructionHistory>()
+        .add_systems(
+            EguiContextPass,
+            load_instruction_textures
+                .run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
+        )
+        .add_systems(
+            EguiContextPass,
+            ui_system.run_if(in_state(GameState::Editing).or(in_state(GameState::Tutorial))),
+        );
     }
 }

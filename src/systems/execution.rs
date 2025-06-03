@@ -1,11 +1,12 @@
 use crate::components::grid::*;
 use crate::components::level::*;
 use crate::components::robot::*;
+use crate::events::level::StarCollectedEvent;
 use crate::resources::execution::*;
 use crate::resources::level::*;
+use crate::states::game::GameState;
 use crate::structs::controls::*;
 use crate::structs::tile::TileColor;
-use crate::events::level::StarCollectedEvent;
 use bevy::prelude::*;
 
 // Système principal d'exécution des instructions
@@ -105,7 +106,7 @@ pub fn execution_system(
             &mut execution_engine,
             &level_manager,
             &mut star_events,
-            level_id
+            level_id,
         ) {
             Ok(()) => {
                 // L'avancement est géré dans execute_instruction pour CallFunction
@@ -176,8 +177,12 @@ fn execute_instruction(
             // Vérifier que la fonction existe
             if let Some(problem_state) = level_manager.get_problem_state(level_id) {
                 if function_id < problem_state.functions.len() {
-                    info!("Appel de fonction {} depuis fonction {} instruction {}", 
-                          function_id, execution_engine.get_current_function(), execution_engine.get_current_instruction());
+                    info!(
+                        "Appel de fonction {} depuis fonction {} instruction {}",
+                        function_id,
+                        execution_engine.get_current_function(),
+                        execution_engine.get_current_instruction()
+                    );
                     execution_engine.call_function(function_id);
                     // Ne pas avancer l'instruction ici, l'exécution continue dans la nouvelle fonction
                     Ok(())
@@ -192,7 +197,15 @@ fn execute_instruction(
         Instruction::ConditionalRed(inner_instruction) => {
             if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
                 if tile.color == TileColor::Red {
-                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager, star_events, level_id)?;
+                    execute_instruction(
+                        *inner_instruction,
+                        robot,
+                        grid,
+                        execution_engine,
+                        level_manager,
+                        star_events,
+                        level_id,
+                    )?;
                 } else {
                     execution_engine.advance_instruction();
                 }
@@ -205,7 +218,15 @@ fn execute_instruction(
         Instruction::ConditionalGreen(inner_instruction) => {
             if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
                 if tile.color == TileColor::Green {
-                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager, star_events, level_id)?;
+                    execute_instruction(
+                        *inner_instruction,
+                        robot,
+                        grid,
+                        execution_engine,
+                        level_manager,
+                        star_events,
+                        level_id,
+                    )?;
                 } else {
                     execution_engine.advance_instruction();
                 }
@@ -218,7 +239,15 @@ fn execute_instruction(
         Instruction::ConditionalBlue(inner_instruction) => {
             if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
                 if tile.color == TileColor::Blue {
-                    execute_instruction(*inner_instruction, robot, grid, execution_engine, level_manager, star_events, level_id)?;
+                    execute_instruction(
+                        *inner_instruction,
+                        robot,
+                        grid,
+                        execution_engine,
+                        level_manager,
+                        star_events,
+                        level_id,
+                    )?;
                 } else {
                     execution_engine.advance_instruction();
                 }
@@ -249,7 +278,9 @@ pub fn update_star_counter_system(
 
             // Compter les étoiles actuellement collectées dans la grille
             if let Ok(grid) = grid_query.single() {
-                let stars_collected = grid.tiles.iter()
+                let stars_collected = grid
+                    .tiles
+                    .iter()
                     .filter_map(|tile_opt| tile_opt.as_ref())
                     .filter(|tile| tile.has_star && tile.star_collected)
                     .count();
@@ -275,6 +306,7 @@ pub fn check_completion_system(
     grid_query: Query<&Grid, With<CurrentLevel>>,
     mut level_manager: ResMut<LevelManager>,
     execution_engine: Res<ExecutionEngine>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let Ok(grid) = grid_query.single() else {
         return;
@@ -293,7 +325,9 @@ pub fn check_completion_system(
     let total_stars = current_level.total_stars;
 
     // Compte les étoiles collectées directement depuis la grille
-    let stars_collected = grid.tiles.iter()
+    let stars_collected = grid
+        .tiles
+        .iter()
         .filter_map(|tile_opt| tile_opt.as_ref())
         .filter(|tile| tile.has_star && tile.star_collected)
         .count();
@@ -307,6 +341,14 @@ pub fn check_completion_system(
             // Enregistrer le temps de complétion
             problem_state.completion_time_recorded = true;
             problem_state.record_completion_time();
+        }
+    }
+
+    // Vérifier si tous les niveaux sont complétés (seulement en mode normal)
+    if level_manager.get_current_level_type() == crate::resources::level::LevelType::Normal {
+        if level_manager.are_all_levels_completed() {
+            info!("Tous les puzzles sont complétés! Fin du jeu.");
+            next_state.set(GameState::TimeUp);
         }
     }
 }
