@@ -3,6 +3,7 @@ use crate::events::game::*;
 use crate::events::level::*;
 use crate::events::player::*;
 use crate::events::robot::*;
+use crate::globals::TEST_DURATION;
 use crate::plugins::grid::*;
 use crate::plugins::loading::*;
 use crate::plugins::menu::*;
@@ -13,13 +14,13 @@ use crate::resources::game::*;
 use crate::resources::level::*;
 use crate::resources::loading::*;
 use crate::resources::player::*;
+use crate::resources::ui::UiFocusState;
 use crate::states::game::*;
 use crate::systems::time_up::TimeUpPlugin;
 use crate::systems::ui::EguiUIPlugin;
 use bevy::diagnostic::FrameCount;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode};
-use crate::resources::ui::UiFocusState;
 
 mod components;
 mod events;
@@ -47,7 +48,7 @@ fn main() {
         }),))
         .init_state::<GameState>()
         .insert_resource(PlayerInfo::default())
-        .insert_resource(GameTimer::new(20.0))
+        .insert_resource(GameTimer::new(TEST_DURATION))
         .insert_resource(LevelManager::new())
         .insert_resource(LoadingState::default())
         .insert_resource(ExecutionEngine::new(1.0))
