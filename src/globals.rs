@@ -1,6 +1,6 @@
 use bevy::color::Color;
 
-pub const TEST_DURATION: f32 = 1.0;
+pub const TEST_DURATION: f32 = 20.0;
 pub const TILE_SIZE: f32 = 45.0;               // Taille d'une tuile en pixels (réduit de 60 à 45)
 pub const TILE_SPACING: f32 = 2.0;             // Espacement entre les tuiles
 pub const STAR_SIZE: f32 = 15.0;               // Taille des étoiles (réduit de 20 à 15)

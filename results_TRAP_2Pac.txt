@@ -1,4 +1,0 @@
-TRAP 2Pac
-
-Problème 1 : Premier Pas (0/2) - Echoué
-Problème 2 : Circuit en L (10/11) - Echoué
