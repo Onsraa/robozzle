@@ -70,7 +70,7 @@ pub fn setup_player_info_ui(
                 ..default()
             }).with_children(|parent| {
                 parent.spawn((
-                    Text::new("Nom et Prénom :"),
+                    Text::new("Nom et Prenom :"),
                     TextFont {
                         font_size: 18.0,
                         ..default()
@@ -131,7 +131,7 @@ pub fn setup_player_info_ui(
                 SubmitButton,
             )).with_children(|parent| {
                 parent.spawn((
-                    Text::new("Commencer les exercices"),
+                    Text::new("Commencer"),
                     TextFont {
                         font_size: 18.0,
                         ..default()
@@ -142,7 +142,7 @@ pub fn setup_player_info_ui(
 
             // Message d'erreur (invisible au début)
             parent.spawn((
-                Text::new("Veuillez entrer votre nom et prénom"),
+                Text::new("Veuillez entrer votre nom et prenom"),
                 TextFont {
                     font_size: 16.0,
                     ..default()

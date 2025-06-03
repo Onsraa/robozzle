@@ -10,6 +10,7 @@ use crate::structs::controls::Instruction;
 use crate::structs::tile::TileColor;
 use bevy::prelude::*;
 use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
+use egui::Color32;
 
 // Resource pour l'état d'édition avec egui
 #[derive(Resource, Default)]
@@ -541,6 +542,7 @@ fn function_editor_ui(
                 ui.label(
                     egui::RichText::new(format!("F{}", func_id + 1))
                         .size(18.0)
+                        .color(Color32::WHITE)
                         .strong(),
                 );
                 ui.add_space(10.0);
@@ -797,9 +799,9 @@ fn instruction_text_button(
 // Fonction helper pour extraire l'instruction interne d'une instruction conditionnelle
 fn unwrap_conditional(instruction: &Instruction) -> Instruction {
     match instruction {
-        Instruction::ConditionalRed(inner) |
-        Instruction::ConditionalGreen(inner) |
-        Instruction::ConditionalBlue(inner) => inner.as_ref().clone(),
+        Instruction::ConditionalRed(inner)
+        | Instruction::ConditionalGreen(inner)
+        | Instruction::ConditionalBlue(inner) => inner.as_ref().clone(),
         other => other.clone(),
     }
 }
@@ -890,30 +892,30 @@ fn instruction_display_info(instruction: &Instruction) -> (String, egui::Color32
         Instruction::CallFunction(id) => {
             (format!("F{}", id + 1), egui::Color32::from_gray(140), false)
         }
-        Instruction::ConditionalRed(inner) => {
-            match inner.as_ref() {
-                Instruction::CallFunction(id) => {
-                    (format!("F{}", id + 1), egui::Color32::from_rgb(200, 80, 80), false)
-                }
-                _ => ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true)
-            }
-        }
-        Instruction::ConditionalGreen(inner) => {
-            match inner.as_ref() {
-                Instruction::CallFunction(id) => {
-                    (format!("F{}", id + 1), egui::Color32::from_rgb(80, 200, 80), false)
-                }
-                _ => ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true)
-            }
-        }
-        Instruction::ConditionalBlue(inner) => {
-            match inner.as_ref() {
-                Instruction::CallFunction(id) => {
-                    (format!("F{}", id + 1), egui::Color32::from_rgb(80, 80, 200), false)
-                }
-                _ => ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true)
-            }
-        }
+        Instruction::ConditionalRed(inner) => match inner.as_ref() {
+            Instruction::CallFunction(id) => (
+                format!("F{}", id + 1),
+                egui::Color32::from_rgb(200, 80, 80),
+                false,
+            ),
+            _ => ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true),
+        },
+        Instruction::ConditionalGreen(inner) => match inner.as_ref() {
+            Instruction::CallFunction(id) => (
+                format!("F{}", id + 1),
+                egui::Color32::from_rgb(80, 200, 80),
+                false,
+            ),
+            _ => ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true),
+        },
+        Instruction::ConditionalBlue(inner) => match inner.as_ref() {
+            Instruction::CallFunction(id) => (
+                format!("F{}", id + 1),
+                egui::Color32::from_rgb(80, 80, 200),
+                false,
+            ),
+            _ => ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true),
+        },
     }
 }
 

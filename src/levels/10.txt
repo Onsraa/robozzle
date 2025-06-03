@@ -4,26 +4,13 @@ ROBOT 0 9 EAST
 FUNCTIONS 5 5
 
 GRID:
-R*   X   X   X   X   X   X   B*
+R*   X   X   X   X   X   X   R*
 B*   X   X   X   X   X   X   B*
 B*   X   R*   X   X   X   R*   B*
 B*   R*   B*   X   R*   X   B*   B*
 B*   B*   B*   X   B*   X   B*   B*
 B*   B*   B*   X   B*   R*   B*   B*
 B*   B*   B*   X   B*   B*   B*   B*
+B*   B*   B*   R*   B*   B*   B*   B*
 B*   B*   B*   B*   B*   B*   B*   B*
-B*   B*   B*   B*   B*   B*   B*   B*
-B*   B*   B*   B*   B*   B*   B*   B*
-
-G*   X   X   X   X   X
-G*   R   B   B   B   G*
-G*   B   B   R   B   G*
-B   X   X   X   X   X
-B   X   G*   B   B   G*
-B   X   B   X   X   B
-B   X   B   X   B   B
-B   X   B   X   G   G*
-B   X   B   X   X   X
-B   X   G*   R   B   G*
-B   X   X   X   X   B
-G*   B   B   B   B   G*
+B   B*   B*   B*   B*   B*   B*   B*
