@@ -19,6 +19,9 @@ impl Plugin for TimerPlugin {
                 )
                     .run_if(in_state(GameState::Editing)),
             )
-            .add_systems(Update, reset_level_timer_system);
+            .add_systems(
+                Update,
+                reset_level_timer_system
+            );
     }
 }

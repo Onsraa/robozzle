@@ -593,9 +593,10 @@ fn get_texture_for_instruction<'a>(
                 Instruction::Forward => &textures.forward,
                 Instruction::TurnLeft => &textures.turn_left,
                 Instruction::TurnRight => &textures.turn_right,
-                _ => &None,
+                Instruction::CallFunction(_) | _ => &None,
             }
         }
+        Instruction::CallFunction(_) => &None,
         _ => &None,
     }
 }
@@ -826,7 +827,7 @@ fn handle_slot_click(
                 // Extraire l'instruction de base si elle est déjà conditionnelle
                 let base_instruction = unwrap_conditional(&function[slot_index]);
 
-                // Ne rien faire si c'est une instruction vide
+                // Wrapper toute instruction non-vide, y compris CallFunction
                 if !matches!(base_instruction, Instruction::Noop) {
                     function[slot_index] = wrap_with_condition(base_instruction, condition);
                 }
@@ -889,14 +890,29 @@ fn instruction_display_info(instruction: &Instruction) -> (String, egui::Color32
         Instruction::CallFunction(id) => {
             (format!("F{}", id + 1), egui::Color32::from_gray(140), false)
         }
-        Instruction::ConditionalRed(_) => {
-            ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true)
+        Instruction::ConditionalRed(inner) => {
+            match inner.as_ref() {
+                Instruction::CallFunction(id) => {
+                    (format!("F{}", id + 1), egui::Color32::from_rgb(200, 80, 80), false)
+                }
+                _ => ("".to_string(), egui::Color32::from_rgb(200, 80, 80), true)
+            }
         }
-        Instruction::ConditionalGreen(_) => {
-            ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true)
+        Instruction::ConditionalGreen(inner) => {
+            match inner.as_ref() {
+                Instruction::CallFunction(id) => {
+                    (format!("F{}", id + 1), egui::Color32::from_rgb(80, 200, 80), false)
+                }
+                _ => ("".to_string(), egui::Color32::from_rgb(80, 200, 80), true)
+            }
         }
-        Instruction::ConditionalBlue(_) => {
-            ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true)
+        Instruction::ConditionalBlue(inner) => {
+            match inner.as_ref() {
+                Instruction::CallFunction(id) => {
+                    (format!("F{}", id + 1), egui::Color32::from_rgb(80, 80, 200), false)
+                }
+                _ => ("".to_string(), egui::Color32::from_rgb(80, 80, 200), true)
+            }
         }
     }
 }

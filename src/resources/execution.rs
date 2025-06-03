@@ -14,17 +14,17 @@ pub struct ExecutionEngine {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ExecutionSpeed {
-    Normal,  // x1 - 1.0 seconde
-    Fast,    // x2 - 0.5 seconde  
-    VeryFast, // x5 - 0.2 seconde
+    Normal,  
+    Fast,    
+    VeryFast, 
 }
 
 impl ExecutionSpeed {
     pub fn get_duration(&self) -> f32 {
         match self {
-            ExecutionSpeed::Normal => 1.0,
-            ExecutionSpeed::Fast => 0.5,
-            ExecutionSpeed::VeryFast => 0.2,
+            ExecutionSpeed::Normal => 0.5,
+            ExecutionSpeed::Fast => 0.25,
+            ExecutionSpeed::VeryFast => 0.02,
         }
     }
 
