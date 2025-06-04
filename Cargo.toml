@@ -9,3 +9,11 @@ bevy_egui = "0.34.1"
 bevy_simple_text_input = "0.11.1"
 egui = "0.31.1"
 image = "0.25.6"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+strip = "debuginfo"

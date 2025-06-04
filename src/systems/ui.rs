@@ -145,7 +145,7 @@ pub fn ui_system(
 
                     ui.label(
                         egui::RichText::new(format!(
-                            "⏱️ {:02}:{:02}",
+                            "⏱ {:02}:{:02}",
                             remaining_mins, remaining_secs
                         ))
                         .size(18.0)
@@ -244,7 +244,7 @@ pub fn ui_system(
                         if ui
                             .add_sized(
                                 [150.0, 40.0],
-                                egui::Button::new("➡️ Suivant")
+                                egui::Button::new("Suivant")
                                     .fill(egui::Color32::from_rgb(80, 200, 80)),
                             )
                             .clicked()

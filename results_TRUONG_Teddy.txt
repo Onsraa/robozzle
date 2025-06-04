@@ -1,0 +1,10 @@
+TRUONG Teddy
+
+Problème 1 : Aller Retour (2/2) - Réussi
+Problème 2 : Gauche, gauche, gauche, droite ?? (12/12) - Réussi
+Problème 3 : Pile sur le rouge (1/1) - Réussi
+Problème 4 : Etoile (4/4) - Réussi
+Problème 5 : Croix rouge (15/15) - Réussi
+Problème 6 : Petite croix (4/4) - Réussi
+Problème 7 : Coupe à moitié (1/1) - Réussi
+Problème 8 : Limite ta pile (57/57) - Réussi

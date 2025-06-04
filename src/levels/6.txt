@@ -1,0 +1,13 @@
+LEVEL Petite croix
+SIZE 7 7
+ROBOT 3 3 EAST
+FUNCTIONS 4 3
+
+GRID:
+X  X  X  B*  X  X  X
+X  X  X  B  X  X  X
+X  X  X  B  X  X  X
+B*  B  B  R  B  B  B*
+X  X  X  B  X  X  X
+X  X  X  B  X  X  X
+X  X  X  B*  X  X  X

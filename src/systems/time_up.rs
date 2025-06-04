@@ -1,8 +1,8 @@
-use bevy::prelude::*;
-use bevy::app::AppExit;
-use bevy_egui::{EguiContexts, egui};
 use crate::resources::level::LevelManager;
 use crate::resources::player::PlayerInfo;
+use bevy::app::AppExit;
+use bevy::prelude::*;
+use bevy_egui::{EguiContexts, egui};
 
 // Système pour l'interface de fin de jeu
 pub fn time_up_ui_system(
@@ -29,14 +29,15 @@ pub fn time_up_ui_system(
                     ui.add_space(20.0);
                     ui.heading("Félicitations!");
                     ui.add_space(20.0);
-                    ui.label(egui::RichText::new("Vous avez réussi tous les puzzles!")
-                        .size(20.0)
-                        .color(egui::Color32::from_rgb(80, 200, 80)));
+                    ui.label(
+                        egui::RichText::new("Vous avez réussi tous les puzzles!")
+                            .size(20.0)
+                            .color(egui::Color32::from_rgb(80, 200, 80)),
+                    );
                 } else {
                     ui.heading("Temps écoulé");
                     ui.add_space(30.0);
-                    ui.label(egui::RichText::new("Merci pour votre participation!")
-                        .size(20.0));
+                    ui.label(egui::RichText::new("Merci pour votre participation!").size(20.0));
                 }
 
                 ui.add_space(30.0);
@@ -62,9 +63,19 @@ pub fn time_up_ui_system(
                     }
                 }
 
-                ui.label(format!("Candidat: {} {}", player_info.last_name, player_info.first_name));
-                ui.label(format!("Puzzles complétés: {}/{}", completed_count, levels.len()));
-                ui.label(format!("Étoiles collectées: {}/{}", total_stars_collected, total_stars_available));
+                ui.label(format!(
+                    "Candidat: {} {}",
+                    player_info.last_name, player_info.first_name
+                ));
+                ui.label(format!(
+                    "Puzzles complétés: {}/{}",
+                    completed_count,
+                    levels.len()
+                ));
+                ui.label(format!(
+                    "Étoiles collectées: {}/{}",
+                    total_stars_collected, total_stars_available
+                ));
 
                 ui.add_space(30.0);
 
@@ -78,7 +89,10 @@ pub fn time_up_ui_system(
 
                                 ui.add_space(10.0);
 
-                                ui.label(format!("⭐ {}/{}", state.stars_collected, level.total_stars));
+                                ui.label(format!(
+                                    "⭐ {}/{}",
+                                    state.stars_collected, level.total_stars
+                                ));
 
                                 if let Some(time) = state.completion_time {
                                     ui.add_space(10.0);
