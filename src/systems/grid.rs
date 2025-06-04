@@ -61,7 +61,7 @@ pub fn display_grid_system(
     ));
 
     // Affiche chaque tuile (seulement celles qui existent)
-    for (index, tile_opt) in grid.tiles.iter().enumerate() {
+    for (_, tile_opt) in grid.tiles.iter().enumerate() {
         if let Some(tile) = tile_opt {
             let world_x = start_x + tile.x as f32 * (TILE_SIZE + TILE_SPACING) + TILE_SIZE / 2.0;
             let world_y = start_y - tile.y as f32 * (TILE_SIZE + TILE_SPACING) - TILE_SIZE / 2.0;

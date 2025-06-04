@@ -199,7 +199,7 @@ pub fn handle_submit_events(
             next_state.set(GameState::Loading);
         } else {
             // Afficher le message d'erreur
-            if let Ok(mut visibility) = error_visibility.get_single_mut() {
+            if let Ok(mut visibility) = error_visibility.single_mut() {
                 *visibility = Visibility::Visible;
             }
         }
@@ -239,7 +239,7 @@ pub fn handle_player_info_validation(
                 next_state.set(GameState::Loading);
             } else {
                 // Afficher le message d'erreur
-                if let Ok(mut visibility) = error_visibility.get_single_mut() {
+                if let Ok(mut visibility) = error_visibility.single_mut() {
                     *visibility = Visibility::Visible;
                 }
             }
@@ -253,6 +253,6 @@ pub fn cleanup_player_info_ui(
     ui_query: Query<Entity, With<PlayerInfoUI>>,
 ) {
     for entity in ui_query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
 }

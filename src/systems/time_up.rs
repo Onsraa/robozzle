@@ -114,7 +114,7 @@ pub fn time_up_ui_system(
                     }
 
                     // Fermer l'application
-                    exit.send(AppExit::Success);
+                    exit.write(AppExit::Success);
                 }
             });
         });

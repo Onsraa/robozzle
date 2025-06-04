@@ -1,6 +1,6 @@
 use bevy::color::Color;
 
-pub const TEST_DURATION: f32 = 20.0;
+pub const TEST_DURATION: f32 = 25.0;
 pub const TILE_SIZE: f32 = 45.0;              
 pub const TILE_SPACING: f32 = 2.0;             
 pub const STAR_SIZE: f32 = 15.0;               

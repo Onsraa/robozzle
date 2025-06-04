@@ -18,7 +18,6 @@ pub fn execution_system(
     mut level_manager: ResMut<LevelManager>,
     mut star_events: EventWriter<StarCollectedEvent>,
 ) {
-    // Vérifie si il est temps d'exécuter la prochaine instruction
     if !execution_engine.tick(time.delta()) {
         return;
     }
@@ -55,18 +54,14 @@ pub fn execution_system(
         let function = &problem_state.functions[current_function];
 
         if current_instruction_index >= function.len() {
-            // Fin de fonction - retour ou arrêt
             if !execution_engine.return_from_function() {
-                // Plus rien à exécuter
                 return;
             }
-            // Continue avec l'instruction suivante après le retour
             continue;
         }
 
         let instruction = function[current_instruction_index].clone();
 
-        // Vérifie si c'est une condition non satisfaite
         let should_skip = match &instruction {
             Instruction::ConditionalRed(_) => {
                 if let Some(tile) = grid.get_tile_at(robot.x, robot.y) {
@@ -93,12 +88,10 @@ pub fn execution_system(
         };
 
         if should_skip {
-            // Skip cette instruction sans délai
             execution_engine.advance_instruction();
             continue;
         }
 
-        // Exécute l'instruction
         match execute_instruction(
             instruction,
             &mut robot,
@@ -109,11 +102,9 @@ pub fn execution_system(
             level_id,
         ) {
             Ok(()) => {
-                // L'avancement est géré dans execute_instruction pour CallFunction
-                break; // Sort de la boucle après une exécution réussie
+                break; 
             }
             Err(error_msg) => {
-                // Erreur d'exécution
                 execution_engine.set_error(error_msg);
                 robot.reset_to_start();
                 break;
@@ -122,7 +113,6 @@ pub fn execution_system(
     }
 }
 
-// Fonction qui exécute une instruction spécifique
 fn execute_instruction(
     instruction: Instruction,
     robot: &mut Robot,
@@ -134,25 +124,21 @@ fn execute_instruction(
 ) -> Result<(), String> {
     match instruction {
         Instruction::Forward => {
-            // Calcule la nouvelle position
             let (dx, dy) = robot.direction.get_offset();
             let new_x = robot.x + dx;
             let new_y = robot.y + dy;
 
-            // Vérifie si la nouvelle position est valide
             if !grid.is_valid_position(new_x, new_y) {
                 return Err("Vous êtes en dehors du puzzle".to_string());
             }
 
-            // Déplace le robot
             robot.x = new_x;
             robot.y = new_y;
 
-            // Vérifie si il y a une étoile à collecter
             if let Some(tile) = grid.get_tile_at_mut(new_x, new_y) {
                 if tile.has_star && !tile.star_collected {
                     tile.star_collected = true;
-                    star_events.send(StarCollectedEvent { x: new_x, y: new_y });
+                    star_events.write(StarCollectedEvent { x: new_x, y: new_y });
                     info!("Étoile collectée à ({}, {})", new_x, new_y);
                 }
             }
@@ -289,7 +275,6 @@ pub fn update_star_counter_system(
                     problem_state.stars_collected = stars_collected;
                     info!("Étoiles collectées: {}/{}", stars_collected, total_stars);
 
-                    // Si toutes les étoiles sont collectées, arrêter l'exécution
                     if stars_collected >= total_stars {
                         problem_state.is_completed = true;
                         execution_engine.stop();

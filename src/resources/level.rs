@@ -3,7 +3,6 @@ use std::fs;
 use bevy::prelude::*;
 use crate::resources::player::PlayerInfo;
 use crate::structs::level::{LevelData, ProblemState};
-use crate::structs::controls::Instruction;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LevelType {
@@ -68,7 +67,7 @@ impl LevelManager {
         level_files.sort_by_key(|(num, _)| *num);
 
         // Charge chaque niveau dans l'ordre
-        for (index, (level_num, file_path)) in level_files.iter().enumerate() {
+        for (index, (_, file_path)) in level_files.iter().enumerate() {
             match LevelData::from_file(file_path, start_id + index) {
                 Ok(level_data) => {
                     levels.push(level_data);

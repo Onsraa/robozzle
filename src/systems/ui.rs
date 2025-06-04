@@ -5,7 +5,7 @@ use crate::events::level::SwitchLevelEvent;
 use crate::resources::execution::ExecutionEngine;
 use crate::resources::grid::GridDisplayConfig;
 use crate::resources::level::LevelManager;
-use crate::resources::ui::{DragDropState, InstructionHistory};
+use crate::resources::ui::{DragDropState};
 use crate::states::game::GameState;
 use crate::structs::controls::Instruction;
 use crate::structs::tile::TileColor;
@@ -42,7 +42,6 @@ pub struct InstructionTextures {
 pub fn load_instruction_textures(
     mut contexts: EguiContexts,
     mut textures: ResMut<InstructionTextures>,
-    asset_server: Res<AssetServer>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -104,7 +103,6 @@ pub fn ui_system(
     game_timer: Res<crate::resources::game::GameTimer>,
     mut next_state: ResMut<NextState<GameState>>,
     mut drag_drop_state: ResMut<DragDropState>,
-    mut history: ResMut<InstructionHistory>,
     time: Res<Time>,
 ) {
     let ctx = contexts.ctx_mut();
@@ -212,7 +210,7 @@ pub fn ui_system(
 
                             if ui.add_sized([110.0, 25.0], button).clicked() && can_switch {
                                 if i != current_level_id {
-                                    level_switch_events.send(SwitchLevelEvent(i));
+                                    level_switch_events.write(SwitchLevelEvent(i));
                                     execution_engine.stop();
                                 }
                             }
@@ -399,7 +397,6 @@ pub fn ui_system(
                             &textures,
                             &mut execution_engine, 
                             &mut drag_drop_state,
-                            &mut history,
                             time.elapsed_secs_f64(),
                             &mut robot_query,
                             &mut grid_query,
@@ -819,7 +816,6 @@ fn function_editor_ui(
     textures: &InstructionTextures,
     execution_engine: &mut ExecutionEngine, // Changé en mutable
     drag_drop_state: &mut DragDropState,
-    history: &mut InstructionHistory,
     current_time: f64,
     robot_query: &mut Query<&mut Robot, With<CurrentLevel>>, // Ajout
     grid_query: &mut Query<&mut Grid, With<CurrentLevel>>, // Ajout
@@ -888,8 +884,6 @@ fn function_editor_ui(
                     textures,
                     is_executing,
                     drag_drop_state,
-                    history,
-                    current_time,
                     func_id,
                     execution_engine,
                 );
@@ -925,24 +919,19 @@ fn instruction_slot_ui(
     textures: &InstructionTextures,
     is_executing: bool,
     drag_drop_state: &mut DragDropState,
-    history: &mut InstructionHistory,
-    current_time: f64,
     func_id: usize,
-    execution_engine: &mut ExecutionEngine, // Ajout du paramètre mutable
+    execution_engine: &mut ExecutionEngine,
 ) -> bool {
-    // Retourne true si modifié
     let mut modified = false;
     let (text, color, use_image) = instruction_display_info(current_instruction);
     let slot_size = egui::Vec2::new(35.0, 35.0);
 
     let slot_id = egui::Id::new(format!("slot_{}_{}", func_id, slot_index));
-    let (id, rect) = ui.allocate_space(slot_size);
+    let (_, rect) = ui.allocate_space(slot_size);
     let response = ui.interact(rect, slot_id, egui::Sense::click());
 
-    // Vérifier si on peut drop sur ce slot
     let is_drop_target = drag_drop_state.is_dragging && response.hovered();
 
-    // Dessiner le fond du bouton
     let stroke = if is_executing {
         egui::Stroke::new(3.0, egui::Color32::WHITE)
     } else if is_drop_target {
@@ -959,7 +948,6 @@ fn instruction_slot_ui(
         egui::StrokeKind::Outside,
     );
 
-    // Dessiner l'image ou le texte
     if use_image && !matches!(current_instruction, Instruction::Noop) {
         let texture = get_texture_for_instruction(current_instruction, textures);
 
@@ -1306,7 +1294,6 @@ impl Plugin for EguiUIPlugin {
         .init_resource::<EguiEditState>()
         .init_resource::<InstructionTextures>()
         .init_resource::<DragDropState>()
-        .init_resource::<InstructionHistory>()
         .add_systems(
             EguiContextPass,
             load_instruction_textures

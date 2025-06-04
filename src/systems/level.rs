@@ -11,7 +11,6 @@ use bevy::prelude::*;
 // Système pour gérer le changement de niveau
 pub fn handle_level_switch_system(
     mut level_switch_events: EventReader<SwitchLevelEvent>,
-    mut display_config: ResMut<GridDisplayConfig>,
     mut level_manager: ResMut<LevelManager>,
     mut commands: Commands,
     existing_display: Query<Entity, With<GridDisplay>>,
@@ -19,7 +18,6 @@ pub fn handle_level_switch_system(
     mut level_timer: ResMut<LevelTimer>,
 ) {
     for event in level_switch_events.read() {
-        // Nettoie l'affichage actuel
         for entity in existing_display.iter() {
             commands.entity(entity).despawn();
         }
@@ -82,7 +80,7 @@ pub fn auto_start_first_level_system(
 ) {
     // Nettoie le niveau actuel s'il existe
     for entity in existing_level.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
 
     // Vérifie qu'on a au moins un niveau

@@ -1,4 +1,3 @@
-use crate::events::level::SwitchLevelEvent;
 use crate::resources::timer::LevelTimer;
 use crate::states::game::GameState;
 use crate::systems::timer::*;

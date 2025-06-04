@@ -165,8 +165,4 @@ impl ProblemState {
             self.completion_time = Some(elapsed);
         }
     }
-
-    pub fn get_completion_time_seconds(&self) -> f32 {
-        self.completion_time.unwrap_or(0.0)
-    }
 }

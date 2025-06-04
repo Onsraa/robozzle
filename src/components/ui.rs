@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use crate::structs::controls::Instruction;
-use crate::structs::tile::TileColor;
 
 #[derive(Component)]
 pub struct ProblemButton {
