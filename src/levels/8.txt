@@ -1,0 +1,16 @@
+LEVEL Limite ta pile
+SIZE 8 10
+ROBOT 0 9 EAST
+FUNCTIONS 5 5
+
+GRID:
+R*   X   X   X   X   X   X   R*
+B*   X   X   X   X   X   X   B*
+B*   X   R*   X   X   X   R*   B*
+B*   R*   B*   X   R*   X   B*   B*
+B*   B*   B*   X   B*   X   B*   B*
+B*   B*   B*   X   B*   R*   B*   B*
+B*   B*   B*   X   B*   B*   B*   B*
+B*   B*   B*   R*   B*   B*   B*   B*
+B*   B*   B*   B*   B*   B*   B*   B*
+B   B*   B*   B*   B*   B*   B*   B*

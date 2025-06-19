@@ -1,0 +1,18 @@
+LEVEL Gauche, gauche, gauche, droite ??
+SIZE 6 12
+ROBOT 4 6 SOUTH
+FUNCTIONS 4 4
+
+GRID:
+G*   X   X   X   X   X
+G*   R   B   B   B   G*
+G*   B   B   R   B   G*
+B   X   X   X   X   X
+B   X   G*   B   B   G*
+B   X   B   X   X   B
+B   X   B   X   B   B
+B   X   B   X   G   G*
+B   X   B   X   X   X
+B   X   G*   R   B   G*
+B   X   X   X   X   B
+G*   B   B   B   B   G*

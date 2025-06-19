@@ -1,0 +1,7 @@
+LEVEL Aller Retour
+SIZE 5 1
+ROBOT 2 0 EAST
+FUNCTIONS 10
+
+GRID:
+*   .   G   .   *

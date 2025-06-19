@@ -1,0 +1,18 @@
+LEVEL Coupe à moitié
+SIZE 15 12
+ROBOT 10 6 NORTH
+FUNCTIONS 3 6
+
+GRID:
+X  X  X  X  X  X  R  X  X  X  X  X  X  X  X
+X  X  X  X  X  X  B  X  X  X  X  X  X  X  X
+X  X  X  X  X  X  B  X  X  X  X  X  X  X  X
+X  X  X  X  X  X  B  X  X  X  X  X  X  X  X
+X  X  X  X  X  X  B  B*  X  X  R  X  X  X  X
+X  X  X  X  X  X  B  X  X  X  B  B  B  B  R
+X  X  X  X  X  X  B  X  X  X  B  X  B  X  X
+X  X  X  X  X  X  B  X  X  X  X  X  B  X  X
+R  B  B  B  B  B  B  B  B  B  B  B  B  X  X
+X  X  X  X  X  X  X  X  X  X  X  X  B  X  X
+X  X  X  X  X  X  X  X  X  X  X  X  B  X  X
+X  X  X  X  X  X  X  X  X  X  X  X  R  X  X

@@ -1,0 +1,12 @@
+LEVEL Les conditions de couleur
+SIZE 3 6
+ROBOT 0 0 SOUTH
+FUNCTIONS 5
+
+GRID:
+.   X   X
+.   X   X
+R   .   G
+X   X   .
+X   X   .
+X   X   *

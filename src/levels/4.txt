@@ -1,0 +1,11 @@
+LEVEL Etoile
+SIZE 5 5
+ROBOT 2 2 EAST
+FUNCTIONS 3 3
+
+GRID:
+X   X   G  X  X
+X   R   B*  R  X
+G   B*   G  B* G
+X   R   B*  R  X
+X   X   G  X  X
