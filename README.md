@@ -18,11 +18,14 @@ Ce projet a été développé afin d'évaluer des candidats dans un test techniq
 Si Rust n'est pas installé sur votre système :
 
 ```bash
-# Windows/macOS/Linux
+1. Installer rust (Windows/macOS/Linux)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
 2. Cloner le projet
 git clone [https://github.com/Onsraa/robozzle]
+
 cd robozzle
+
 3. Compiler et lancer
 cargo run --release
 ```
