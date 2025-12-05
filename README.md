@@ -3,7 +3,13 @@
 Un jeu de puzzle de programmation visuelle développé avec Rust et Bevy, inspiré du jeu Robozzle original. Guidez un robot à travers différents niveaux en programmant ses mouvements pour collecter toutes les étoiles !  
 Ce projet a été développé afin d'évaluer des candidats dans un test technique qui allie réflexion, algorithme et logique.  
 
-  
+<p align="center">
+  <img src="https://github.com/Onsraa/robozzle/blob/main/assets/gifs/robozzle.gif?raw=true
+" alt="Gif démo" />
+  <br>
+  <u>Interface du test technique</u>
+</p>
+
 ## 📋 Prérequis  
   
 - **Rust** (version 1.70 ou supérieure)  
